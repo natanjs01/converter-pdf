@@ -3,134 +3,268 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Converter PDF → Excel | Word</title>
-  <meta name="description" content="Converta arquivos PDF para Excel (.xlsx) ou Word (.docx) diretamente do navegador." />
+  <title>Converter PDF → Excel | Word • Grátis e Online</title>
+  <meta name="description" content="Converta PDFs para Excel (.xlsx) e Word (.docx) em segundos. Gratuito, seguro e sem cadastro." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='%23fff' d='M36 28h184a12 12 0 0 1 12 12v144a12 12 0 0 1-12 12H92l-44 32a8 8 0 0 1-12-6v-26H36a12 12 0 0 1-12-12V40a12 12 0 0 1 12-12Z'/%3E%3Cpath fill='%232563eb' d='M60 64h136v16H60zM60 104h136v16H60zM60 144h88v16H60z'/%3E%3C/svg%3E" />
   <style>
-    :root { --border:#e5e7eb; --muted:#6b7280; --bg:#f9fafb; --ink:#111827; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:var(--bg); color:var(--ink); }
-    .wrap { max-width: 860px; margin: 32px auto; padding: 0 16px; }
-    h1 { font-weight: 750; letter-spacing: .2px; }
-    .card { max-width: 560px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: 0 10px 20px rgba(0,0,0,.03); }
-    .row { margin: .9rem 0; }
-    .dropzone { border: 2px dashed #9ca3af; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: background .15s; }
-    .dz-hint { color: var(--muted); font-size: .9rem; }
-    select { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: 8px; }
-    button { padding: .65rem 1rem; border:0; border-radius:10px; background:#111827; color:#fff; font-weight:600; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
-    .status { color: var(--muted); font-size: .92rem; margin-left: .75rem; }
-    .alert { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:10px 12px; border-radius:10px; margin:16px 0; font-size:.95rem; display:none; }
-    .footer { margin-top: 24px; font-size: .9rem; color: var(--muted); }
-    a { color:#0ea5e9; text-decoration: none; } a:hover { text-decoration: underline; }
+    :root{
+      --bg:#0b1220; --ink:#0f172a; --muted:#94a3b8; --brand:#2563eb; --brand-2:#22d3ee; --ok:#16a34a; --danger:#dc2626;
+      --card:#0f172a; --glass:rgba(15, 23, 42, .55); --glass-b:#33415580; --ring:#60a5fa55; --border:#1f2a44; --white:#fff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; color:#e5e7eb; background:radial-gradient(1200px 600px at 10% -10%, #1e293b 0%, transparent 60%),
+      radial-gradient(1200px 600px at 100% 0%, #0ea5e9 0%, transparent 60%), linear-gradient(180deg,#0b1220 0%, #0b1120 100%);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:#93c5fd;text-decoration:none} a:hover{text-decoration:underline}
+
+    .nav{max-width:1200px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:36px;height:36px;border-radius:10px;background:conic-gradient(from 180deg, var(--brand), var(--brand-2));display:grid;place-items:center;box-shadow:0 10px 30px #2563eb40}
+    .logo svg{width:20px;height:20px;fill:#fff}
+    .brand span{font-weight:800;letter-spacing:.2px}
+
+    .hero{
+      position:relative; overflow:hidden;
+      background:linear-gradient(120deg, #0b1220 0%, #0b1220a0 40%, transparent 60%), url('https://images.unsplash.com/photo-1551281044-8a5b673a1f2d?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
+      border-bottom:1px solid var(--border);
+    }
+    .hero-inner{max-width:1200px;margin:0 auto;padding:48px 20px 24px 20px;display:grid;grid-template-columns:1.2fr .8fr;gap:28px}
+    @media (max-width:980px){ .hero-inner{grid-template-columns:1fr} }
+
+    .h-title{font-size:clamp(28px,4vw,44px);line-height:1.05;margin:6px 0 10px;font-weight:800}
+    .h-sub{font-size:clamp(15px,2vw,18px);color:#cbd5e1;max-width:60ch}
+    .badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .badge{border:1px solid #33415599;background:#0b122088;color:#cbd5e1;padding:6px 10px;border-radius:999px;font-size:12px;display:flex;gap:8px;align-items:center}
+    .badge svg{width:14px;height:14px;fill:#93c5fd}
+
+    .card{
+      backdrop-filter:saturate(140%) blur(10px);
+      background:linear-gradient(180deg, var(--glass), rgba(2,6,23,.65));
+      border:1px solid var(--glass-b);
+      border-radius:18px; padding:18px; box-shadow:0 10px 40px #00000055;
+    }
+    .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .card-title{font-weight:700;letter-spacing:.3px}
+    .row{margin:12px 0}
+    .dz{border:2px dashed #3b82f6; border-radius:14px; padding:20px; text-align:center; background:#0b122080; transition:.15s; cursor:pointer}
+    .dz:hover{background:#0b1220aa}
+    .dz .hint{color:#cbd5e1;font-size:14px}
+    .dz .filename{margin-top:8px;color:#e5e7eb;font-weight:600}
+    select,button{
+      font:inherit; color:#e5e7eb;
+      background:#0b1220cc; border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+      outline:none; transition:.15s; width:100%;
+    }
+    select:focus,button:focus{box-shadow:0 0 0 6px var(--ring)}
+    button{background:linear-gradient(180deg, #2563eb, #1e3a8a);border-color:#1d4ed8;font-weight:700}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .status{display:inline-flex;gap:8px;align-items:center;color:#cbd5e1;font-size:14px;margin-left:8px}
+    .status.ok{color:#86efac}.status.err{color:#fecaca}
+
+    .features{max-width:1200px;margin:28px auto;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    @media (max-width:980px){.features{grid-template-columns:1fr}}
+    .feat{background:#0b1220cc;border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;gap:12px}
+    .feat-ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:#0b1220;border:1px solid #1f2a44}
+    .feat-ic svg{width:22px;height:22px;fill:#93c5fd}
+    .feat h3{margin:0 0 6px 0;font-size:16px}
+    .feat p{margin:0;color:#cbd5e1;font-size:14px}
+
+    .gallery{max-width:1200px;margin:26px auto;padding:0 20px;display:grid;grid-template-columns:2fr 1fr;gap:14px}
+    @media (max-width:980px){.gallery{grid-template-columns:1fr}}
+    .gimg{border-radius:16px;overflow:hidden;border:1px solid var(--border)}
+    .gimg img{width:100%;height:100%;display:block;object-fit:cover;filter:saturate(1.05) contrast(1.02)}
+
+    .footer{max-width:1200px;margin:26px auto 40px;padding:0 20px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .small{font-size:13px}
+
+    /* Light mode preferido pelo SO */
+    @media (prefers-color-scheme: light){
+      body{color:#0f172a}
+      .h-sub,.dz .hint,.feat p,.status{color:#475569}
+      .badge{background:#ffffffaa;color:#334155;border-color:#e2e8f0}
+      .card{background:linear-gradient(180deg, #ffffffaa, #ffffffd0)}
+      .dz{background:#ffffff; border-color:#93c5fd44}
+      .feat{background:#fff;border-color:#e2e8f0}
+      .feat-ic{background:#f8fafc;border-color:#e2e8f0}
+      select,button{color:#0f172a;background:#fff;border-color:#e2e8f0}
+      .footer{color:#64748b}
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Converter PDF → Excel | Word</h1>
-
-    <div id="apiAlert" class="alert">
-      Não foi possível detectar a URL da API. Atualize esta página (Ctrl+F5) e tente novamente.
+  <!-- NAV -->
+  <header class="nav" aria-label="Topo">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6 4h7l5 5v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm7 0v5h5"/></svg>
+      </div>
+      <span>PDF Converter</span>
     </div>
+    <nav class="small" aria-label="Links">
+      <a href="https://natanjs01.github.io">Início</a>
+    </nav>
+  </header>
 
-    <div class="card">
-      <div class="row">
-        <label class="dz-hint">Selecione um PDF (máx. 20 MB)</label>
-        <div id="drop" class="dropzone">Arraste o PDF aqui ou clique para selecionar</div>
-        <input id="file" type="file" accept="application/pdf" hidden />
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="badges">
+          <span class="badge" title="Gratuito e sem pegadinha">
+            <svg viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5" /></svg> 100% grátis
+          </span>
+          <span class="badge" title="Conexão segura HTTPS">
+            <svg viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M5 10h14v10H5z"/></svg> HTTPS seguro
+          </span>
+          <span class="badge" title="Sem cadastro">
+            <svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm-7 9a7 7 0 0 1 14 0"/></svg> Sem cadastro
+          </span>
+        </div>
+        <h1 class="h-title">Converta PDF para <span style="color:#93c5fd">Excel</span> e <span style="color:#86efac">Word</span> com visual profissional</h1>
+        <p class="h-sub">Arraste seu PDF, escolha o formato e receba um arquivo limpo e organizado. Rápido, gratuito e privado.</p>
       </div>
 
-      <div class="row">
-        <label for="format">Formato de saída:</label>
-        <select id="format">
-          <option value="excel">Excel (.xlsx)</option>
-          <option value="word">Word (.docx)</option>
-        </select>
-      </div>
+      <!-- CARD DE CONVERSÃO -->
+      <div class="card" role="region" aria-label="Conversor PDF">
+        <div class="card-head">
+          <div class="card-title">Conversor</div>
+          <div class="small" id="quota">Tamanho máx: 20&nbsp;MB</div>
+        </div>
 
-      <div class="row">
-        <button id="btn" disabled>Converter</button>
-        <span id="status" class="status"></span>
+        <div class="row">
+          <div id="drop" class="dz" tabindex="0" role="button" aria-controls="file" aria-label="Selecione ou arraste um PDF">
+            <div class="hint">Arraste o PDF aqui ou <u>clique</u> para selecionar</div>
+            <div id="filename" class="filename" aria-live="polite"></div>
+          </div>
+          <input id="file" type="file" accept="application/pdf" hidden />
+        </div>
+
+        <div class="row">
+          <label class="small" for="format">Formato de saída</label>
+          <select id="format" aria-label="Selecione o formato">
+            <option value="excel">Excel (.xlsx)</option>
+            <option value="word">Word (.docx)</option>
+          </select>
+        </div>
+
+        <div class="row" style="display:flex;gap:10px;align-items:center">
+          <button id="btn" disabled aria-live="polite">
+            Converter agora
+          </button>
+          <span id="status" class="status" aria-live="polite"></span>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div class="footer">
-      Front hospedado em <b>GitHub Pages</b> (<a href="https://natanjs01.github.io">https://natanjs01.github.io</a>). O processamento é feito pelo backend Flask (API).
-    </div>
-  </div>
+  <!-- FEATURES -->
+  <section class="features" aria-label="Recursos">
+    <article class="feat">
+      <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M7 3h10M6 11h12M5 15h14M4 19h16"/></svg></div>
+      <div><h3>Planilhas limpas</h3><p>Algoritmo que organiza linhas e evita mistura de colunas em PDFs comuns.</p></div>
+    </article>
+    <article class="feat">
+      <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v6c0 5-7 8-7 8S5 18 5 13V7l7-4z"/></svg></div>
+      <div><h3>Privado</h3><p>Envio direto ao servidor seguro. Não armazenamos seus arquivos após a conversão.</p></div>
+    </article>
+    <article class="feat">
+      <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg></div>
+      <div><h3>Interface simples</h3><p>UX direta, com arrastar & soltar, atalho por teclado e feedback instantâneo.</p></div>
+    </article>
+  </section>
+
+  <!-- GALLERY / VISUALS -->
+  <section class="gallery" aria-label="Exemplos visuais">
+    <div class="gimg"><img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1600&auto=format&fit=crop" alt="Mesa de trabalho com notebook e planilha" loading="lazy"/></div>
+    <div class="gimg"><img src="https://images.unsplash.com/photo-1517433456452-f9633a875f6f?q=80&w=1600&auto=format&fit=crop" alt="Documento de texto em tela" loading="lazy"/></div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="small">© <span id="y"></span> PDF Converter — feito por <a href="https://natanjs01.github.io">natanjs01</a></div>
+    <div class="small">Backend seguro: <code>converter-pdf-01gy.onrender.com</code></div>
+  </footer>
 
   <script>
-    // ===== BACKEND FIXO (Render) =====
-    const API = "https://converter-pdf-01gy.onrender.com";
+    // ====== CONFIG ======
+    const API = "https://converter-pdf-01gy.onrender.com"; // seu backend no Render
+    const MAX_MB = 20;
 
+    // ====== DOM ======
     const drop = document.getElementById('drop');
     const input = document.getElementById('file');
     const btn = document.getElementById('btn');
     const format = document.getElementById('format');
     const statusEl = document.getElementById('status');
-    const apiAlert = document.getElementById('apiAlert');
+    const filenameEl = document.getElementById('filename');
+    const yearEl = document.getElementById('y');
+    yearEl.textContent = new Date().getFullYear();
+
     let picked = null;
+    const setStatus = (msg, type="") => {
+      statusEl.className = "status" + (type ? " "+type : "");
+      statusEl.textContent = msg || "";
+    };
 
-    function setStatus(msg) { statusEl.textContent = msg || ''; }
-    function apiOk() {
-      const ok = API && API.startsWith("https://");
-      apiAlert.style.display = ok ? "none" : "block";
-      return ok;
-    }
+    const okAPI = () => API && API.startsWith("https://");
 
-    // init
-    apiOk();
-
-    drop.addEventListener('click', () => input.click());
-    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.background = '#f3f4f6'; });
-    drop.addEventListener('dragleave', () => { drop.style.background = ''; });
-    drop.addEventListener('drop', (e) => {
-      e.preventDefault(); drop.style.background = '';
-      const f = e.dataTransfer.files?.[0];
-      if (f) handleFile(f);
-    });
-    input.addEventListener('change', () => {
-      const f = input.files?.[0];
-      if (f) handleFile(f);
-    });
-
-    function handleFile(f) {
-      if (f.type !== 'application/pdf') { alert('Selecione um arquivo PDF.'); return; }
-      if (f.size > 20 * 1024 * 1024) { alert('Limite de 20 MB.'); return; }
+    function handleFile(f){
+      if(!f) return;
+      if(f.type !== "application/pdf"){ alert("Selecione um arquivo PDF."); return; }
+      if(f.size > MAX_MB*1024*1024){ alert(`Limite de ${MAX_MB} MB.`); return; }
       picked = f;
-      drop.textContent = `Selecionado: ${f.name}`;
-      if (apiOk()) btn.disabled = false;
-      setStatus('');
+      filenameEl.textContent = "Selecionado: " + f.name;
+      btn.disabled = !okAPI();
+      setStatus("");
     }
+
+    // Acessibilidade: clique/teclado
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }});
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.opacity=.95; });
+    drop.addEventListener('dragleave', () => { drop.style.opacity=1; });
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault(); drop.style.opacity=1;
+      const f = e.dataTransfer.files?.[0]; handleFile(f);
+    });
+    input.addEventListener('change', () => handleFile(input.files?.[0]));
 
     btn.addEventListener('click', async () => {
-      if (!picked) return;
-      if (!apiOk()) { alert("API não configurada."); return; }
+      if(!picked) return;
+      if(!okAPI()){ alert("API inválida."); return; }
 
-      btn.disabled = true; setStatus('Convertendo...');
-      try {
+      btn.disabled = true;
+      setStatus("Convertendo…");
+
+      try{
         const fd = new FormData();
         fd.append('file', picked);
-
         const url = `${API}/convert?to=${encodeURIComponent(format.value)}`;
-        const res = await fetch(url, { method: "POST", body: fd });
+        const res = await fetch(url, { method:"POST", body:fd });
 
-        if (!res.ok) {
-          const t = await res.text().catch(() => "");
+        if(!res.ok){
+          const t = await res.text().catch(()=> "");
           throw new Error(t || `Erro HTTP ${res.status}`);
         }
 
         const blob = await res.blob();
-        const outName = picked.name.replace(/\.pdf$/i, '') + (format.value === 'excel' ? '.xlsx' : '.docx');
+        const outName = picked.name.replace(/\.pdf$/i,'') + (format.value === 'excel' ? '.xlsx' : '.docx');
         const link = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = link; a.download = outName; document.body.appendChild(a); a.click();
         a.remove(); URL.revokeObjectURL(link);
-        setStatus('Pronto ✅');
-      } catch (e) {
+        setStatus("Pronto!", "ok");
+      }catch(e){
         console.error(e);
-        setStatus('Erro');
-        alert('Falha na conversão: ' + e.message);
-      } finally {
+        setStatus("Erro ao converter", "err");
+        alert("Falha na conversão: " + e.message);
+      }finally{
         btn.disabled = false;
       }
     });
