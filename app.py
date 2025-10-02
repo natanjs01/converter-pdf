@@ -50,103 +50,57 @@ def pdf_to_docx(file_stream) -> bytes:
     bio = io.BytesIO(); doc.save(bio); bio.seek(0)
     return bio.read()
 
-# ======== Excel: extrator com grade de colunas (sem Camelot) ========
-import statistics
+# ======== Excel robusto: auto (tabela x formulário) + saneamento ========
+import re, statistics
+from openpyxl import Workbook
 
 EXCEL_MAX_ROWS = 1_048_576
 EXCEL_MAX_COLS = 16_384
+CELL_MAX = 32_000  # margem de segurança (< 32767)
 
-def _ensure_sheet_capacity(wb, ws_name_base, ws, rows_to_add_len, cols_to_add_len):
-    cur_rows = ws.max_row or 0
-    cur_cols = ws.max_column or 0
-    need_new = ((cur_rows + rows_to_add_len) > EXCEL_MAX_ROWS) or (max(cur_cols, cols_to_add_len) > EXCEL_MAX_COLS)
-    if not need_new:
+_xml_illegal_re = re.compile(
+    u"[\u0000-\u0008\u000b\u000c\u000e-\u001f\uD800-\uDFFF\uFFFE\uFFFF]"
+)
+
+def _sanitize_cell(s: str) -> str:
+    if s is None:
+        return ""
+    if not isinstance(s, str):
+        s = str(s)
+    s = _xml_illegal_re.sub("", s)
+    s = " ".join(s.replace("\xa0", " ").split())
+    if len(s) > CELL_MAX:
+        s = s[:CELL_MAX]
+    return s
+
+def _ensure_sheet_capacity(wb, ws_name_base, ws, add_rows, add_cols):
+    r, c = ws.max_row or 0, ws.max_column or 0
+    need = (r + add_rows > EXCEL_MAX_ROWS) or (max(c, add_cols) > EXCEL_MAX_COLS)
+    if not need:
         return ws
-    idx = 2
-    existing = {s.title for s in wb.worksheets}
-    while f"{ws_name_base}_{idx}" in existing:
-        idx += 1
-    return wb.create_sheet(f"{ws_name_base}_{idx}")
+    i = 2
+    names = {s.title for s in wb.worksheets}
+    while f"{ws_name_base}_{i}" in names:
+        i += 1
+    return wb.create_sheet(f"{ws_name_base}_{i}")
 
-def _append_rows(wb, ws, ws_base_name, rows, add_separator=False):
-    if add_separator and ws.max_row > 0:
-        ws = _ensure_sheet_capacity(wb, ws_base_name, ws, 1, 1)
+def _append_rows(wb, ws, ws_base, rows, sep=False):
+    if sep and ws.max_row > 0:
+        ws = _ensure_sheet_capacity(wb, ws_base, ws, 1, 1)
         ws.append([])
     for row in rows:
-        ws2 = _ensure_sheet_capacity(wb, ws_base_name, ws, 1, len(row))
+        row = [_sanitize_cell(x) for x in row]
+        ws2 = _ensure_sheet_capacity(wb, ws_base, ws, 1, len(row))
         if ws2 is not ws:
             ws = ws2
         ws.append(row)
     return ws
 
-def _clean_text(s: str) -> str:
-    return " ".join((s or "").replace("\t"," ").replace("\xa0"," ").split())
+def _words(page):
+    w = page.extract_words(keep_blank_chars=False, use_text_flow=True) or []
+    return [it for it in w if _sanitize_cell(it.get("text"))]
 
-def _page_words(page):
-    # palavras com coordenadas; manter ordenação natural
-    words = page.extract_words(keep_blank_chars=False, use_text_flow=True) or []
-    # filtra detritos
-    words = [w for w in words if _clean_text(w.get("text",""))]
-    return words
-
-def _build_column_grid(words, max_cols=14):
-    """
-    Cria fronteiras de colunas pela análise de gaps entre x0 das palavras.
-    - Junta 'clusters' onde o gap é pequeno
-    - Coloca uma fronteira quando o gap >> mediana
-    Retorna lista de limiares X (col_boundaries) e uma função que mapeia x -> idx da coluna
-    """
-    if not words:
-        return [0, 1e9], lambda x: 0
-
-    xs = sorted(w["x0"] for w in words)
-    gaps = [xs[i+1] - xs[i] for i in range(len(xs)-1)]
-    if not gaps:
-        return [0, 1e9], lambda x: 0
-
-    med = statistics.median(gaps)
-    p90 = sorted(gaps)[int(len(gaps)*0.90)] if len(gaps) >= 10 else max(gaps)
-    # threshold adaptativo: valor alto entre mediana*2.8 e percentil 90
-    thr = max(med*2.8, p90)
-
-    # fronteiras onde gap é grande
-    boundaries = [xs[0] - 5]  # margem à esquerda
-    acc = xs[0]
-    for i, g in enumerate(gaps):
-        if g >= thr:
-            boundaries.append(xs[i] + g/2)
-    boundaries.append(xs[-1] + 5)       # margem à direita
-
-    # limita nº de colunas
-    if len(boundaries) - 1 > max_cols:
-        step = (len(boundaries) - 1) / max_cols
-        new_b = [boundaries[0]]
-        acc = 0.0
-        for _ in range(max_cols-1):
-            acc += step
-            idx = int(round(acc))
-            new_b.append(boundaries[idx])
-        new_b.append(boundaries[-1])
-        boundaries = new_b
-
-    def col_index(x):
-        # binária simples
-        lo, hi = 0, len(boundaries)-1
-        while lo < hi:
-            mid = (lo + hi) // 2
-            if x < boundaries[mid]:
-                hi = mid
-            else:
-                lo = mid + 1
-        return max(0, min(lo-1, len(boundaries)-2))
-
-    return boundaries, col_index
-
-def _group_rows_by_y(words, y_tol=3):
-    """
-    Agrupa palavras em linhas pelo Y (com tolerância).
-    Retorna lista de linhas, cada linha é lista de palavras (ordenadas por x0).
-    """
+def _group_by_y(words, y_tol=3):
     rows = {}
     for w in words:
         ybin = round(w["top"] / y_tol)
@@ -157,77 +111,149 @@ def _group_rows_by_y(words, y_tol=3):
         lines.append(items)
     return lines
 
+# ---------- EXTRAÇÃO MODO TABELA (grade por gaps) ----------
+def _build_grid(words, max_cols=18):
+    if not words:
+        return [0, 1e9], lambda x: 0
+    xs = sorted(w["x0"] for w in words)
+    gaps = [xs[i+1] - xs[i] for i in range(len(xs)-1)]
+    if not gaps:
+        return [0, 1e9], lambda x: 0
+    med = statistics.median(gaps)
+    p90 = sorted(gaps)[int(len(gaps)*0.90)] if len(gaps) >= 10 else max(gaps)
+    thr = max(med * 2.6, p90)  # sensível o bastante p/ separar colunas
+    boundaries = [xs[0] - 6]
+    for i, g in enumerate(gaps):
+        if g >= thr:
+            boundaries.append(xs[i] + g/2)
+    boundaries.append(xs[-1] + 6)
+
+    # limita
+    if len(boundaries) - 1 > max_cols:
+        step = (len(boundaries) - 1) / max_cols
+        new_b = [boundaries[0]]
+        acc = 0
+        for _ in range(max_cols-1):
+            acc += step
+            new_b.append(boundaries[int(round(acc))])
+        new_b.append(boundaries[-1])
+        boundaries = new_b
+
+    def col_index(x):
+        lo, hi = 0, len(boundaries)-1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if x < boundaries[mid]:
+                hi = mid
+            else:
+                lo = mid + 1
+        return max(0, min(lo-1, len(boundaries)-2))
+    return boundaries, col_index
+
 def _materialize_table(words):
-    """
-    Constrói tabela com N colunas fixas:
-      1) grid de colunas global por página
-      2) mapeia cada palavra -> coluna
-      3) cola palavras vizinhas na mesma célula (gap pequeno)
-    """
     if not words:
         return []
-
-    # 1) grade global de colunas
-    boundaries, col_index = _build_column_grid(words)
-
-    # 2) linhas por Y
-    lines = _group_rows_by_y(words)
-
-    ncols = max(1, len(boundaries) - 1)
+    bounds, cidx = _build_grid(words)
+    ncols = max(1, len(bounds) - 1)
+    lines = _group_by_y(words)
     table = []
-
-    for line_words in lines:
+    for line in lines:
         cells = [""] * ncols
-        # varre da esquerda pra direita, agrupando palavras próximas
-        prev_col = None
-        prev_x1 = None
-        for w in line_words:
-            col = col_index(w["x0"])
-            text = _clean_text(w["text"])
-            if not text:
-                continue
-
-            # se mesma coluna e muito perto do texto anterior: concatena
-            if prev_col is not None and col == prev_col and prev_x1 is not None:
+        prev_col, prev_x1 = None, None
+        for w in line:
+            col = cidx(w["x0"])
+            text = _sanitize_cell(w["text"])
+            if prev_col == col and prev_x1 is not None:
                 gap = w["x0"] - prev_x1
-                # limite de "união" depende da largura média da coluna
-                avg_col_width = (boundaries[col+1] - boundaries[col])
-                join_limit = max(8, avg_col_width * 0.15)  # adaptativo
-                if gap <= join_limit:
+                avgw = (bounds[col+1] - bounds[col])
+                join = max(8, avgw * 0.15)
+                if gap <= join:
                     cells[col] = (cells[col] + " " + text).strip()
                 else:
-                    # mesma coluna, mas gap grande -> adiciona com espaço
                     cells[col] = (cells[col] + " " + text).strip()
                 prev_x1 = w["x1"]
-                continue
-
-            # mudou de coluna: coloca texto na coluna nova
-            if cells[col]:
-                cells[col] = (cells[col] + " " + text).strip()
             else:
-                cells[col] = text
-
-            prev_col = col
-            prev_x1 = w["x1"]
-
-        # remove linha vazia?
-        if any(_clean_text(c) for c in cells):
-            table.append([_clean_text(c) for c in cells])
-
+                cells[col] = (cells[col] + " " + text).strip() if cells[col] else text
+                prev_col, prev_x1 = col, w["x1"]
+        if any(c for c in cells):
+            table.append([_sanitize_cell(c) for c in cells])
     return table
 
-def pdf_to_excel(file_stream_or_path) -> bytes:
+# ---------- EXTRAÇÃO MODO FORMULÁRIO (campo: valor) ----------
+_LABEL_HINTS = {"nome", "placa", "data", "telefone", "modelo", "montadora",
+                "ano", "km", "código", "descricao", "descrição", "abs", "airbag", "injeção"}
+
+def _is_probably_label(text):
+    t = text.lower().rstrip(":")
+    return (text.endswith(":")) or (t in _LABEL_HINTS and len(text) <= 25)
+
+def _materialize_form(words):
     """
-    Extrai palavras com pdfplumber, calcula grade de colunas por página,
-    alinha todas as linhas nessa grade e escreve em uma única aba 'Dados'
-    (criando Dados_2, _3... se necessário).
+    Varre linha a linha; se encontrar um token que parece rótulo ("Campo:" ou palavra de rótulo),
+    junta todo texto à direita até o próximo rótulo -> produz [Campo | Valor].
+    """
+    lines = _group_by_y(words)
+    rows = []
+    for line in lines:
+        # junta tudo da linha em pares campo:valor (pode ter vários por linha)
+        i = 0
+        while i < len(line):
+            t = _sanitize_cell(line[i]["text"])
+            if _is_probably_label(t):
+                campo = t.rstrip(":")
+                # pegue tudo à direita até encontrar outro rótulo forte
+                j = i + 1
+                vals = []
+                while j < len(line):
+                    tj = _sanitize_cell(line[j]["text"])
+                    if _is_probably_label(tj):
+                        break
+                    vals.append(tj)
+                    j += 1
+                valor = " ".join(vals).strip()
+                rows.append([campo, valor])
+                i = j
+            else:
+                i += 1
+    # fallback: se nada virou par, retorna a linha inteira numa coluna única
+    if not rows:
+        for line in lines:
+            rows.append([" ".join(_sanitize_cell(w["text"]) for w in line)])
+    return rows
+
+# ---------- AUTO-DET ECÇÃO ----------
+def _page_mode(words):
+    """
+    Heurística simples:
+      - muitas ocorrências de ":" e diversidade de x0 -> formulário
+      - linhas densas e gaps regulares -> tabela
+    """
+    if not words:
+        return "empty"
+    lines = _group_by_y(words)
+    colon = sum(1 for w in words if ":" in w["text"])
+    uniq_x = len({int(w["x0"] // 10) for w in words})
+    avg_line_len = sum(len(l) for l in lines) / max(1, len(lines))
+    if colon >= 8 and uniq_x >= 20:
+        return "form"
+    if avg_line_len >= 6:
+        return "table"
+    # fallback
+    return "form" if colon >= 3 else "table"
+
+def pdf_to_excel(file_stream_or_path, force_mode: str = "auto") -> bytes:
+    """
+    Gera UMA aba 'Dados' (Dados_2, _3... se exceder) com:
+      - modo 'table'  -> grid de colunas por gaps
+      - modo 'form'   -> pares Campo | Valor
+      - modo 'auto'   -> decide por página
     """
     wb = Workbook()
     ws = wb.active
     ws.title = "Dados"
-    ws_base = "Dados"
+    base = "Dados"
 
-    # trabalhar com caminho físico melhora compatibilidade
+    # trabalhar com caminho físico
     need_cleanup = False
     if isinstance(file_stream_or_path, (str, os.PathLike)):
         pdf_path = str(file_stream_or_path)
@@ -241,16 +267,25 @@ def pdf_to_excel(file_stream_or_path) -> bytes:
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for pidx, page in enumerate(pdf.pages, start=1):
-                words = _page_words(page)
-                rows = _materialize_table(words)
+                words = _words(page)
 
-                if rows:
-                    # separador visual entre páginas (sem quebrar grade)
-                    if ws.max_row > 0:
-                        ws = _append_rows(wb, ws, ws_base, [[]], add_separator=False)
-                    ws = _append_rows(wb, ws, ws_base, rows, add_separator=False)
+                mode = force_mode
+                if force_mode == "auto":
+                    mode = _page_mode(words)
+
+                if mode == "table":
+                    rows = _materialize_table(words)
+                elif mode == "form":
+                    rows = _materialize_form(words)
                 else:
-                    ws = _append_rows(wb, ws, ws_base, [[f"(Página {pidx} sem conteúdo detectado)"]], add_separator=True)
+                    rows = [["(Página sem conteúdo)"]] if not words else _materialize_table(words)
+
+                if ws.max_row > 0:
+                    ws = _append_rows(wb, ws, base, [[]])  # separador visual
+
+                header = [f"Página {pidx} • modo: {mode}"]
+                ws = _append_rows(wb, ws, base, [header])
+                ws = _append_rows(wb, ws, base, rows)
     finally:
         if need_cleanup and os.path.exists(pdf_path):
             os.remove(pdf_path)
@@ -268,10 +303,10 @@ def convert_options():
     resp = make_response("", 204)
     return resp
 
-# ======== Endpoint principal ========
 @app.post("/convert")
 def convert():
     to_fmt = request.args.get("to", "").lower()
+    mode = (request.args.get("mode") or "auto").lower()  # novo
     f = request.files.get("file")
     if to_fmt not in {"excel", "word"}:
         return abort(400, "Parâmetro 'to' precisa ser 'excel' ou 'word'.")
@@ -296,7 +331,7 @@ def convert():
                 tmp.write(f.read()); tmp_path = tmp.name
             try:
                 with open(tmp_path, "rb") as fp:
-                    out = pdf_to_excel(fp)
+                    out = pdf_to_excel(fp, force_mode=mode)   # <<< usa o mode
             finally:
                 os.remove(tmp_path)
             return send_file(io.BytesIO(out),
