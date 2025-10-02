@@ -1,56 +1,52 @@
+# app.py - Backend Flask (PDF -> DOCX/XLSX) com CORS para GitHub Pages
+# Front em: https://natanjs01.github.io
+# Endpoint público: POST /convert?to=excel|word
+
 import io
 import os
 import tempfile
 import warnings
 from typing import List
-from flask import Flask, request, send_file, abort, send_from_directory
+from flask import Flask, request, send_file, abort
+from flask_cors import CORS
 import pdfplumber
 from docx import Document
 from openpyxl import Workbook
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# Camelot é opcional (melhora extração de tabelas)
-try:
-    import camelot
-    CAMEL0T_OK = True
-except Exception:
-    CAMEL0T_OK = False
-
 app = Flask(__name__)
-MAX_MB = 20
+MAX_MB = 20  # limite de upload em MB
 
-# ------------------ WORD ------------------
+# --- CORS: libera somente seu Pages ---
+CORS(
+    app,
+    resources={r"/convert": {"origins": ["https://natanjs01.github.io"]}},
+    methods=["POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+    max_age=86400
+)
 
+# ======== Conversão para Word ========
 def pdf_to_docx(file_stream) -> bytes:
     """Converte PDF em DOCX simples (texto por linha)."""
     doc = Document()
     with pdfplumber.open(file_stream) as pdf:
         for i, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ""
+            if i > 1:
+                doc.add_page_break()
             doc.add_heading(f"Página {i}", level=2)
             for line in text.splitlines():
                 doc.add_paragraph(line)
-            doc.add_page_break()
     bio = io.BytesIO()
     doc.save(bio)
     bio.seek(0)
     return bio.read()
 
-# ------------------ EXCEL (única aba com overflow) ------------------
-
+# ======== Conversão para Excel (uma aba; overflow cria Dados_2, _3...) ========
 EXCEL_MAX_ROWS = 1_048_576
 EXCEL_MAX_COLS = 16_384
-
-def _camelot_extract_tables(pdf_path: str, page_no: int, flavor: str):
-    return camelot.read_pdf(
-        pdf_path,
-        pages=str(page_no),
-        flavor=flavor,
-        strip_text="\n",
-        edge_tol=50,
-        row_tol=10,
-    )
 
 def _pdfplumber_tables(page: pdfplumber.page.Page) -> List[List[List[str]]]:
     table_settings = {
@@ -69,6 +65,7 @@ def _pdfplumber_tables(page: pdfplumber.page.Page) -> List[List[List[str]]]:
         return []
 
 def _xy_cluster_rows(page: pdfplumber.page.Page) -> List[List[str]]:
+    # Agrupa por Y e quebra por gaps em X para evitar "misturar"
     words = page.extract_words(keep_blank_chars=False, use_text_flow=True) or []
     if not words:
         text = page.extract_text() or ""
@@ -101,55 +98,37 @@ def _xy_cluster_rows(page: pdfplumber.page.Page) -> List[List[str]]:
     return result
 
 def _ensure_sheet_capacity(wb: Workbook, ws_name_base: str, ws, rows_to_add_len: int, cols_to_add_len: int):
-    """
-    Garante capacidade: se estourar linhas/colunas, cria nova aba e retorna (ws, row_idx).
-    """
-    # openpyxl não fornece row count sem percorrer, então usamos ws.max_row:
-    current_rows = ws.max_row if ws.max_row else 0
-    current_cols = ws.max_column if ws.max_column else 0
-
-    need_new_sheet = (
-        (current_rows + rows_to_add_len) > EXCEL_MAX_ROWS or
-        (max(current_cols, cols_to_add_len) > EXCEL_MAX_COLS)
-    )
-    if not need_new_sheet:
+    current_rows = ws.max_row or 0
+    current_cols = ws.max_column or 0
+    need_new = ((current_rows + rows_to_add_len) > EXCEL_MAX_ROWS) or (max(current_cols, cols_to_add_len) > EXCEL_MAX_COLS)
+    if not need_new:
         return ws
-
-    # cria nova aba com sufixo incremental
     idx = 2
-    while f"{ws_name_base}_{idx}" in [s.title for s in wb.worksheets]:
+    existing = {s.title for s in wb.worksheets}
+    while f"{ws_name_base}_{idx}" in existing:
         idx += 1
     return wb.create_sheet(f"{ws_name_base}_{idx}")
 
 def _append_rows(wb: Workbook, ws, ws_base_name: str, rows: List[List[str]], add_separator: bool):
-    """
-    Adiciona linhas na aba atual; cria nova aba automaticamente se estourar limites.
-    """
-    # separador visual entre blocos (opcional)
     if add_separator and ws.max_row > 0:
         if ws.max_row + 1 > EXCEL_MAX_ROWS:
             ws = _ensure_sheet_capacity(wb, ws_base_name, ws, 2, 1)
         ws.append([])
-
-    # acrescenta em blocos, verificando capacidade
     for row in rows:
         cols_len = len(row)
         ws_candidate = _ensure_sheet_capacity(wb, ws_base_name, ws, 1, cols_len)
         if ws_candidate is not ws:
-            ws = ws_candidate  # mudou de aba
+            ws = ws_candidate
         ws.append(row)
     return ws
 
 def pdf_to_excel(file_stream_or_path) -> bytes:
-    """
-    Junta tudo em UMA aba 'Dados' (cria 'Dados_2', 'Dados_3' somente se ultrapassar limite).
-    """
     wb = Workbook()
     ws = wb.active
     ws.title = "Dados"
     ws_base = "Dados"
 
-    # Precisamos de caminho físico para Camelot
+    # Trabalhar com caminho físico melhora compatibilidade de libs
     need_cleanup = False
     if isinstance(file_stream_or_path, (str, os.PathLike)):
         pdf_path = str(file_stream_or_path)
@@ -165,45 +144,22 @@ def pdf_to_excel(file_stream_or_path) -> bytes:
             for pidx, page in enumerate(pdf.pages, start=1):
                 page_had_content = False
 
-                # 1) Camelot lattice
-                if CAMEL0T_OK:
-                    try:
-                        tables = _camelot_extract_tables(pdf_path, pidx, "lattice")
-                        for t in tables:
-                            rows = t.df.values.tolist()
-                            ws = _append_rows(wb, ws, ws_base, rows, add_separator=page_had_content)
-                            page_had_content = True
-                    except Exception:
-                        pass
-                    # 2) Camelot stream
-                    try:
-                        tables = _camelot_extract_tables(pdf_path, pidx, "stream")
-                        for t in tables:
-                            rows = t.df.values.tolist()
-                            ws = _append_rows(wb, ws, ws_base, rows, add_separator=page_had_content)
-                            page_had_content = True
-                    except Exception:
-                        pass
+                # 1) pdfplumber: estratégia por linhas (separação de células por linhas)
+                tables = _pdfplumber_tables(page)
+                if tables:
+                    for tbl in tables:
+                        ws = _append_rows(wb, ws, ws_base, tbl, add_separator=page_had_content)
+                        page_had_content = True
 
-                # 3) pdfplumber linhas
-                if not page_had_content:
-                    tables = _pdfplumber_tables(page)
-                    if tables:
-                        for tbl in tables:
-                            ws = _append_rows(wb, ws, ws_base, tbl, add_separator=page_had_content)
-                            page_had_content = True
-
-                # 4) Cluster XY
+                # 2) Fallback: cluster XY (colunas por gaps)
                 if not page_had_content:
                     rows = _xy_cluster_rows(page)
                     if rows:
                         ws = _append_rows(wb, ws, ws_base, rows, add_separator=page_had_content)
                         page_had_content = True
 
-                # Se nada mesmo, coloca marcador (opcional)
                 if not page_had_content:
-                    ws = _append_rows(wb, ws, ws_base, [["(Página", str(pidx), "sem conteúdo detectado)"]], add_separator=True)
-
+                    ws = _append_rows(wb, ws, ws_base, [[f"(Página {pidx} sem conteúdo detectado)"]], add_separator=True)
     finally:
         if need_cleanup and os.path.exists(pdf_path):
             os.remove(pdf_path)
@@ -213,16 +169,7 @@ def pdf_to_excel(file_stream_or_path) -> bytes:
     bio.seek(0)
     return bio.read()
 
-# ------------------ FLASK ROUTES ------------------
-
-@app.get("/")
-def home():
-    return send_from_directory(".", "index.html")
-
-@app.get("/<path:path>")
-def static_proxy(path):
-    return send_from_directory(".", path)
-
+# ======== Endpoint ========
 @app.post("/convert")
 def convert():
     to_fmt = request.args.get("to", "").lower()
@@ -250,7 +197,6 @@ def convert():
                 download_name=(f.filename or "arquivo").rsplit(".", 1)[0] + ".docx"
             )
         else:
-            # Para Excel, salve em arquivo temporário para melhor compatibilidade
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
                 tmp.write(f.read())
                 tmp_path = tmp.name
@@ -270,5 +216,5 @@ def convert():
         return abort(500, f"Falha na conversão: {e}")
 
 if __name__ == "__main__":
-    # Rode: python app.py -> http://127.0.0.1:8000
-    app.run(host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)

@@ -4,50 +4,88 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Converter PDF → Excel | Word</title>
+  <meta name="description" content="Converta arquivos PDF para Excel (.xlsx) ou Word (.docx) diretamente do navegador." />
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; }
-    .card { max-width: 560px; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }
-    .row { margin: .75rem 0; }
-    .dropzone {
-      border: 2px dashed #9ca3af; padding: 1.5rem; text-align: center; border-radius: 10px; cursor: pointer;
-    }
-    button { padding: .6rem 1rem; border: 0; border-radius: 8px; background: #111827; color: white; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    .hint { color: #6b7280; font-size: .9rem; }
+    :root { --border:#e5e7eb; --muted:#6b7280; --bg:#f9fafb; --ink:#111827; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:var(--bg); color:var(--ink); }
+    .wrap { max-width: 860px; margin: 32px auto; padding: 0 16px; }
+    h1 { font-weight: 750; letter-spacing: .2px; }
+    .card { max-width: 560px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: 0 10px 20px rgba(0,0,0,.03); }
+    .row { margin: .9rem 0; }
+    .dropzone { border: 2px dashed #9ca3af; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: background .15s; }
+    .dz-hint { color: var(--muted); font-size: .9rem; }
+    select { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: 8px; }
+    button { padding: .65rem 1rem; border:0; border-radius:10px; background:#111827; color:#fff; font-weight:600; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .status { color: var(--muted); font-size: .92rem; margin-left: .75rem; }
+    .alert { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:10px 12px; border-radius:10px; margin:16px 0; font-size:.95rem; }
+    .footer { margin-top: 24px; font-size: .9rem; color: var(--muted); }
+    a { color:#0ea5e9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Converter PDF → Excel | Word</h1>
-  <div class="card">
-    <div class="row">
-      <label class="hint">Selecione um PDF (máx. 20 MB)</label>
-      <div id="drop" class="dropzone">Arraste o PDF aqui ou clique para selecionar</div>
-      <input id="file" type="file" accept="application/pdf" hidden />
+  <div class="wrap">
+    <h1>Converter PDF → Excel | Word</h1>
+
+    <!-- AVISO: defina a URL HTTPS do backend Flask na constante API (abaixo, no <script>) -->
+    <div id="apiAlert" class="alert" style="display:none;">
+      Defina a URL do backend em <code>API</code> no código desta página (ex.: <b>https://converter-pdf-01gy.onrender.com</b>). 
+      Sem isso, a conversão não funciona no GitHub Pages.
     </div>
 
-    <div class="row">
-      <label for="format">Formato de saída:</label>
-      <select id="format">
-        <option value="excel">Excel (.xlsx)</option>
-        <option value="word">Word (.docx)</option>
-      </select>
+    <div class="card">
+      <div class="row">
+        <label class="dz-hint">Selecione um PDF (máx. 20 MB)</label>
+        <div id="drop" class="dropzone">Arraste o PDF aqui ou clique para selecionar</div>
+        <input id="file" type="file" accept="application/pdf" hidden />
+      </div>
+
+      <div class="row">
+        <label for="format">Formato de saída:</label>
+        <select id="format">
+          <option value="excel">Excel (.xlsx)</option>
+          <option value="word">Word (.docx)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <button id="btn" disabled>Converter</button>
+        <span id="status" class="status"></span>
+      </div>
     </div>
 
-    <div class="row">
-      <button id="btn" disabled>Converter</button>
-      <span id="status" class="hint" style="margin-left:.75rem;"></span>
+    <div class="footer">
+      Front hospedado em <b>GitHub Pages</b>. O processamento é feito no seu backend Flask (API).
     </div>
   </div>
 
   <script>
+    // ================== CONFIGURE AQUI ==================
+    // Coloque a URL HTTPS pública do seu backend Flask (Render/Railway/Koyeb/ngrok, etc.)
+    // Exemplo: const API = "https://seu-servico.onrender.com";
+    const API = "https://converter-pdf-01gy.onrender.com"; // <<<<<<<<<<<<<<<<<<<<<< INSIRA AQUI A SUA URL (obrigatório)
+    // ====================================================
+
     const drop = document.getElementById('drop');
     const input = document.getElementById('file');
     const btn = document.getElementById('btn');
     const format = document.getElementById('format');
     const statusEl = document.getElementById('status');
+    const apiAlert = document.getElementById('apiAlert');
     let picked = null;
 
     function setStatus(msg) { statusEl.textContent = msg || ''; }
+    function ensureApiConfigured() {
+      const ok = typeof API === "string" && API.startsWith("https://");
+      apiAlert.style.display = ok ? "none" : "block";
+      btn.disabled = btn.disabled || !ok;
+      return ok;
+    }
+
+    // inicial
+    ensureApiConfigured();
 
     drop.addEventListener('click', () => input.click());
     drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.background = '#f3f4f6'; });
@@ -67,31 +105,44 @@
       if (f.size > 20 * 1024 * 1024) { alert('Limite de 20 MB.'); return; }
       picked = f;
       drop.textContent = `Selecionado: ${f.name}`;
-      btn.disabled = false;
+      if (ensureApiConfigured()) btn.disabled = false;
       setStatus('');
     }
 
     btn.addEventListener('click', async () => {
       if (!picked) return;
+      if (!ensureApiConfigured()) { alert("Configure a URL do backend (API) antes de usar."); return; }
+
       btn.disabled = true; setStatus('Convertendo...');
       try {
         const fd = new FormData();
         fd.append('file', picked);
-        // aqui usamos apenas "/convert", pois o HTML será servido pelo Flask na mesma origem
-        const res = await fetch("/convert?to=" + format.value, { method: "POST", body: fd });
+
+        const url = `${API}/convert?to=${encodeURIComponent(format.value)}`;
+        const res = await fetch(url, { method: "POST", body: fd });
+
         if (!res.ok) {
-          const t = await res.text();
-          throw new Error(t || `Erro ${res.status}`);
+          const t = await res.text().catch(() => "");
+          throw new Error(t || `Erro HTTP ${res.status}`);
         }
+
         const blob = await res.blob();
         const outName = picked.name.replace(/\.pdf$/i, '') + (format.value === 'excel' ? '.xlsx' : '.docx');
-        const url = URL.createObjectURL(blob);
+        const link = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = outName; document.body.appendChild(a); a.click();
-        a.remove(); URL.revokeObjectURL(url);
+        a.href = link; a.download = outName; document.body.appendChild(a); a.click();
+        a.remove(); URL.revokeObjectURL(link);
         setStatus('Pronto ✅');
       } catch (e) {
-        console.error(e); alert('Falha na conversão: ' + e.message); setStatus('Erro');
+        console.error(e);
+        // mensagens amigáveis
+        if (String(e).includes("Failed to fetch")) {
+          setStatus('Erro de conexão');
+          alert('Não foi possível conectar ao backend (API). Verifique se a URL está correta e com HTTPS.');
+        } else {
+          setStatus('Erro');
+          alert('Falha na conversão: ' + e.message);
+        }
       } finally {
         btn.disabled = false;
       }
