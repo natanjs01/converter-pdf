@@ -1,8 +1,9 @@
 # app.py - API Flask para converter PDF -> XLSX / DOCX
-# Endpoint: POST /convert?to=excel|word&mode=auto|rpt|table|form&engine=auto|plumber|camelot|tabula|ocr
+# Endpoint:
+#   POST /convert?to=excel|word&mode=auto|rpt|table|form&engine=auto|plumber|camelot|tabula|ocr
 
 import io, os, re, tempfile, warnings, statistics, importlib
-from typing import List, Tuple
+from typing import List
 from flask import Flask, request, send_file, abort, make_response
 from flask_cors import CORS
 import pdfplumber
@@ -13,7 +14,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 app = Flask(__name__)
 
-# ----------------------------- CONFIG -----------------------------
+# ====================== CONFIG ======================
 MAX_MB = 20
 ALLOWED_ORIGINS = {"https://natanjs01.github.io"}  # ajuste se precisar
 
@@ -35,7 +36,7 @@ def add_cors_headers(resp):
         resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return resp
 
-# ----------------------------- WORD -----------------------------
+# ====================== WORD ======================
 def pdf_to_docx(file_stream) -> bytes:
     doc = Document()
     with pdfplumber.open(file_stream) as pdf:
@@ -50,7 +51,7 @@ def pdf_to_docx(file_stream) -> bytes:
     doc.save(bio); bio.seek(0)
     return bio.read()
 
-# ----------------------------- EXCEL CORE -----------------------------
+# ====================== EXCEL CORE ======================
 EXCEL_MAX_ROWS = 1_048_576
 EXCEL_MAX_COLS = 16_384
 CELL_MAX = 32_000  # seguro (< 32767)
@@ -92,13 +93,14 @@ def _group_by_y(words, y_tol=3):
     for w in words: rows.setdefault(round(w["top"]/y_tol), []).append(w)
     out = []
     for _, items in sorted(rows.items(), key=lambda kv: kv[0]):
-        items.sort(key=lambda w: w["x0"]); out.append(items)
+        items.sort(key=lambda w: w["x0"])
+        out.append(items)
     return out
 
 def _page_text(page) -> str:
     return (page.extract_text() or "").replace("\xa0", " ")
 
-# Detectores dos seus modelos
+# Detectores de modelos
 def _detect_rpt_lojas(text: str) -> bool:
     return ("LOJA" in text and "CHAPA" in text and "FUNÇÃO" in text and "VALOR" in text)
 def _detect_rpt_desligados(text: str) -> bool:
@@ -138,7 +140,7 @@ def _build_grid_from_header(words, header_tokens: List[str]):
         t=norm(w["text"])
         for token in header_tokens:
             if token in t and token not in header_pos:
-                header_pos[token]=(w["x0"]+w["x1"])/2.0
+                header_pos[token]=(w["x0"]+w["x1"]) / 2.0
     if len(header_pos)>=2:
         xs=sorted(header_pos[t] for t in header_tokens if t in header_pos)
         bounds=[xs[0]-30.0]
@@ -154,7 +156,7 @@ def _build_grid_from_header(words, header_tokens: List[str]):
         return bounds,col_index
     return _build_grid_by_gaps(words)
 
-# RPT_LOJAS
+# Materialização RPT_LOJAS
 _HEADERS_LOJAS = ["chapa","nome","funç","ref","valor","sind"]
 def _extract_loja_name(line_words: List[dict]) -> str:
     txt = " ".join(_sanitize_cell(w["text"]) for w in line_words)
@@ -176,7 +178,7 @@ def _materialize_rpt_lojas(words) -> List[List[str]]:
     if rows: rows.insert(0,["Loja","Chapa","Nome","Função","Ref","Valor","Sind"])
     return rows
 
-# RPT_DESLIGADOS
+# Materialização RPT_DESLIGADOS
 _HEADERS_DESL = ["nome","cpf","admiss","demiss","filial","chapa"]
 def _materialize_rpt_desligados(words) -> List[List[str]]:
     bounds,cidx=_build_grid_from_header(words,_HEADERS_DESL)
@@ -240,29 +242,70 @@ def _auto_mode(words, text):
     if avg_len>=6: return "table"
     return "form" if colon>=3 else "table"
 
-# ---------------- Cabeçalho inteligente (injeção em páginas sem header) ----------------
+# ===== Cabeçalho inteligente + normalizador de RPT_LOJAS =====
 def _looks_like_header(row, tokens: set) -> bool:
     if not row: return False
     s=" ".join(_sanitize_cell(c).lower() for c in row)
     hits=sum(1 for t in tokens if t in s)
     return hits >= max(3, (len(tokens)+1)//2)
+
 def _inject_header_if_missing(rows, expected_header, tokens: set):
     if not rows: return rows
     i0=0
-    while i0<len(rows) and (not any(_sanitize_cell(c) for c in rows[i0]) or "página" in " ".join(_sanitize_cell(c).lower() for c in rows[i0])):
-        i0+=1
+    def _is_blank_or_page(r):
+        txt=" ".join(_sanitize_cell(c).lower() for c in r)
+        return (not any(_sanitize_cell(c) for c in r)) or txt.startswith("página")
+    while i0<len(rows) and _is_blank_or_page(rows[i0]): i0+=1
     if i0>=len(rows): return rows
     if _looks_like_header(rows[i0], tokens): return rows
     return rows[:i0] + [expected_header] + rows[i0:]
 
-# ---------------- Multi-engine (plumber / camelot / tabula / ocr) ----------------
+_LOJA_HEADER = ["Loja","Chapa","Nome","Função","Ref","Valor","Sind"]
+_LOJA_TOKENS = {"loja","chapa","nome","funç","ref","valor","sind"}
+
+def _normalize_rpt_lojas_rows(rows: List[List[str]], prev_loja: str | None):
+    """
+    Remove linhas 'Página X' e 'LOJA N = ...', injeta cabeçalho se precisar,
+    força 7 colunas e preenche a 1a coluna (Loja) com a loja corrente/anteriores.
+    Retorna (rows_norm, ultima_loja).
+    """
+    cur_loja = prev_loja or ""
+    out: List[List[str]] = []
+
+    for r in rows:
+        joined = " ".join(_sanitize_cell(c) for c in r if c).strip()
+        lower = joined.lower()
+
+        if not joined:  # em branco
+            continue
+        if lower.startswith("página"):
+            continue
+
+        m = re.search(r"loja\s+\d+\s*=\s*(.+)", joined, flags=re.I)
+        if m:
+            cur_loja = m.group(1).strip()
+            continue  # marcador não vira linha de dados
+
+        rr = list(r)
+        while len(rr) < 7:
+            rr.append("")
+
+        if not _sanitize_cell(rr[0]):
+            rr[0] = cur_loja or prev_loja or ""
+
+        out.append(rr[:7])
+
+    out = _inject_header_if_missing(out, _LOJA_HEADER, _LOJA_TOKENS)
+    return out, (cur_loja or prev_loja or "")
+
+# ====================== Multi-engine ======================
 def _lib_available(modname: str) -> bool:
     try: importlib.import_module(modname); return True
     except Exception: return False
 
 def _score_table(rows: List[List[str]]) -> float:
     if not rows: return 0.0
-    n=len(rows); m=max(len(r) for r in rows); 
+    n=len(rows); m=max(len(r) for r in rows)
     if n==0 or m==0: return 0.0
     total=n*m; filled=sum(1 for r in rows for c in r if _sanitize_cell(c))
     density=filled/max(1,total)
@@ -318,7 +361,7 @@ def _engine_ocr(pdf_path: str, page_number: int) -> List[List[str]]:
     rows=[]; current=[]; last_line=None
     for i in range(len(data["text"])):
         if int(data["conf"][i]) < 0: continue
-        text=_sanitize_cell(data["text"][i]); 
+        text=_sanitize_cell(data["text"][i])
         if not text: continue
         line=data["line_num"][i]; x=data["left"][i]
         if last_line is None: last_line=line
@@ -366,10 +409,10 @@ def _extract_best_for_page(pdf_path: str, page, text: str, mode_hint="auto", eng
             continue
     return best_rows
 
-# ----------------------------- PDF -> EXCEL (com header inteligente) -----------------------------
+# ====================== PDF -> EXCEL (com header inteligente e estado de Loja) ======================
 def pdf_to_excel(file_stream_or_path, force_mode: str = "auto", engine: str = "auto") -> bytes:
     """
-    force_mode: 'auto' | 'rpt' | 'table' | 'form'  (orienta só o plumber)
+    force_mode: 'auto' | 'rpt' | 'table' | 'form'  (orienta somente o plumber)
     engine:     'auto' | 'plumber' | 'camelot' | 'tabula' | 'ocr'
     """
     wb = Workbook(); ws = wb.active; ws.title = "Dados"; base = "Dados"
@@ -382,6 +425,8 @@ def pdf_to_excel(file_stream_or_path, force_mode: str = "auto", engine: str = "a
         with os.fdopen(fd,"wb") as tmp: tmp.write(file_stream_or_path.read())
         file_stream_or_path.seek(0); need_cleanup=True
 
+    loja_state = ""  # última "LOJA N = ..." encontrada
+
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for pidx, page in enumerate(pdf.pages, start=1):
@@ -391,11 +436,8 @@ def pdf_to_excel(file_stream_or_path, force_mode: str = "auto", engine: str = "a
                 rows = _extract_best_for_page(pdf_path, page, text, mode_hint, engine)
                 if not rows: rows=[["(Sem conteúdo detectado)"]]
 
-                # Cabeçalho inteligente para RPTs quando a página não trouxe header
                 if _detect_rpt_lojas(text):
-                    expected=["Loja","Chapa","Nome","Função","Ref","Valor","Sind"]
-                    tokens={"loja","chapa","nome","funç","ref","valor","sind"}
-                    rows=_inject_header_if_missing(rows, expected, tokens)
+                    rows, loja_state = _normalize_rpt_lojas_rows(rows, loja_state)
                 elif _detect_rpt_desligados(text):
                     expected=["Nome","CPF","Dt.Admissão","Dt.Demissão","Filial","Chapa"]
                     tokens={"nome","cpf","admiss","demiss","filial","chapa"}
@@ -410,7 +452,7 @@ def pdf_to_excel(file_stream_or_path, force_mode: str = "auto", engine: str = "a
     bio=io.BytesIO(); wb.save(bio); bio.seek(0)
     return bio.read()
 
-# ----------------------------- ROUTES -----------------------------
+# ====================== ROUTES ======================
 @app.route("/convert", methods=["OPTIONS"])
 def convert_options(): return make_response("",204)
 
@@ -450,7 +492,7 @@ def convert():
     except Exception as e:
         return abort(500, f"Falha na conversão: {e}")
 
-# ----------------------------- MAIN -----------------------------
+# ====================== MAIN ======================
 if __name__ == "__main__":
     port=int(os.environ.get("PORT",8000))
     app.run(host="0.0.0.0", port=port)
