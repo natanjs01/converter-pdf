@@ -1,6 +1,6 @@
 # app.py - Backend Flask (PDF -> DOCX/XLSX) com CORS para GitHub Pages
-# Front em: https://natanjs01.github.io
-# Endpoint público: POST /convert?to=excel|word
+# Front: https://natanjs01.github.io
+# Endpoint: POST /convert?to=excel|word
 
 import io
 import os
@@ -128,7 +128,7 @@ def pdf_to_excel(file_stream_or_path) -> bytes:
     ws.title = "Dados"
     ws_base = "Dados"
 
-    # Trabalhar com caminho físico melhora compatibilidade de libs
+    # Usar caminho físico ajuda algumas libs
     need_cleanup = False
     if isinstance(file_stream_or_path, (str, os.PathLike)):
         pdf_path = str(file_stream_or_path)
@@ -144,14 +144,12 @@ def pdf_to_excel(file_stream_or_path) -> bytes:
             for pidx, page in enumerate(pdf.pages, start=1):
                 page_had_content = False
 
-                # 1) pdfplumber: estratégia por linhas (separação de células por linhas)
                 tables = _pdfplumber_tables(page)
                 if tables:
                     for tbl in tables:
                         ws = _append_rows(wb, ws, ws_base, tbl, add_separator=page_had_content)
                         page_had_content = True
 
-                # 2) Fallback: cluster XY (colunas por gaps)
                 if not page_had_content:
                     rows = _xy_cluster_rows(page)
                     if rows:
@@ -198,8 +196,7 @@ def convert():
             )
         else:
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-                tmp.write(f.read())
-                tmp_path = tmp.name
+                tmp.write(f.read()); tmp_path = tmp.name
             try:
                 with open(tmp_path, "rb") as fp:
                     out = pdf_to_excel(fp)
