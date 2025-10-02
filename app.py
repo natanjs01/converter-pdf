@@ -1,6 +1,6 @@
 # app.py - API Flask para converter PDF -> XLSX / DOCX
 # CORS liberado apenas para: https://natanjs01.github.io
-# Endpoint: POST /convert?to=excel|word&mode=auto|rpt|table|form
+# Endpoint: POST /convert?to=excel|word&mode=auto|rpt|table|form&engine=auto|plumber|camelot|tabula|ocr
 
 import io
 import os
@@ -323,19 +323,174 @@ def _auto_mode(words, text):
         return "table"
     return "form" if colon >= 3 else "table"
 
-def pdf_to_excel(file_stream_or_path, force_mode: str = "auto") -> bytes:
+
+# ====================== M U L T I - E N G I N E   (tables) ======================
+
+import importlib
+
+def _lib_available(modname: str) -> bool:
+    try:
+        importlib.import_module(modname)
+        return True
+    except Exception:
+        return False
+
+def _score_table(rows: List[List[str]]) -> float:
+    """Pontua saída de tabela: densidade, linhas/colunas, cabeçalhos prováveis."""
+    if not rows:
+        return 0.0
+    n = len(rows)
+    m = max(len(r) for r in rows)
+    if n == 0 or m == 0:
+        return 0.0
+    total = n * m
+    filled = sum(1 for r in rows for c in r if _sanitize_cell(c))
+    density = filled / max(1, total)
+    header_boost = 0.0
+    hdr = " ".join(_sanitize_cell(x).lower() for x in rows[0])
+    for k in ("chapa", "nome", "cpf", "filial", "funç", "ref", "valor", "sind", "data", "descri"):
+        if k in hdr:
+            header_boost += 0.05
+    return (n**0.7) * (m**0.6) * (0.5 + 0.5*density) * (1.0 + header_boost)
+
+def _engine_plumber(page, text, mode_hint="auto") -> List[List[str]]:
+    words = _words(page)
+    if mode_hint == "form":
+        return _materialize_form(words)
+    if mode_hint == "table":
+        return _build_grid_by_gaps_table(words)
+    if _detect_rpt_lojas(text):
+        return _materialize_rpt_lojas(words)
+    if _detect_rpt_desligados(text):
+        return _materialize_rpt_desligados(words)
+    mm = _auto_mode(words, text)
+    return _materialize_form(words) if mm == "form" else _build_grid_by_gaps_table(words)
+
+def _engine_camelot(pdf_path: str, page_number: int) -> List[List[str]]:
+    if not _lib_available("camelot"):
+        return []
+    import camelot
+    p = str(page_number)
+    out_rows = []
+    best_score = 0.0
+    for flavor in ("lattice", "stream"):
+        try:
+            tables = camelot.read_pdf(pdf_path, pages=p, flavor=flavor, strip_text="\n")
+        except Exception:
+            continue
+        for t in getattr(tables, "tables", []):
+            rows = [list(map(_sanitize_cell, row)) for row in t.df.values.tolist()]
+            s = _score_table(rows)
+            if s > best_score:
+                best_score, out_rows = s, rows
+    return out_rows
+
+def _engine_tabula(pdf_path: str, page_number: int) -> List[List[str]]:
+    if not _lib_available("tabula"):
+        return []
+    import tabula
+    p = str(page_number)
+    out_rows = []
+    best_score = 0.0
+    for lattice in (True, False):
+        try:
+            dfs = tabula.read_pdf(pdf_path, pages=p, lattice=lattice, stream=(not lattice), multiple_tables=True)
+        except Exception:
+            continue
+        for df in dfs or []:
+            rows = [list(map(_sanitize_cell, map(str, row))) for row in df.values.tolist()]
+            s = _score_table(rows)
+            if s > best_score:
+                best_score, out_rows = s, rows
+    return out_rows
+
+def _engine_ocr(pdf_path: str, page_number: int) -> List[List[str]]:
+    if not (_lib_available("pdf2image") and _lib_available("pytesseract")):
+        return []
+    from pdf2image import convert_from_path
+    import pytesseract
+    try:
+        imgs = convert_from_path(pdf_path, first_page=page_number, last_page=page_number, dpi=300)
+        if not imgs:
+            return []
+        img = imgs[0]
+        data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, lang="por+eng")
+    except Exception:
+        return []
+    rows = []
+    current_line = []
+    last_line_num = None
+    for i in range(len(data["text"])):
+        if int(data["conf"][i]) < 0:
+            continue
+        text = _sanitize_cell(data["text"][i])
+        if not text:
+            continue
+        line_num = data["line_num"][i]
+        x = data["left"][i]
+        if last_line_num is None:
+            last_line_num = line_num
+        if line_num != last_line_num:
+            if current_line:
+                current_line.sort(key=lambda z: z[0])
+                rows.append([t for _, t in current_line])
+            current_line = []
+            last_line_num = line_num
+        current_line.append((x, text))
+    if current_line:
+        current_line.sort(key=lambda z: z[0])
+        rows.append([t for _, t in current_line])
+    return rows
+
+def _is_scanned_page(page) -> bool:
+    try:
+        num_imgs = len(page.images or [])
+    except Exception:
+        num_imgs = 0
+    words = _words(page)
+    return num_imgs >= 1 and len(words) < 10
+
+def _extract_best_for_page(pdf_path: str, page, text: str, mode_hint="auto", engine="auto") -> List[List[str]]:
+    candidates = []
+    if engine == "plumber":
+        candidates = [("plumber", lambda: _engine_plumber(page, text, mode_hint))]
+    elif engine == "camelot":
+        candidates = [("camelot", lambda: _engine_camelot(pdf_path, page.page_number))]
+    elif engine == "tabula":
+        candidates = [("tabula", lambda: _engine_tabula(pdf_path, page.page_number))]
+    elif engine == "ocr":
+        candidates = [("ocr", lambda: _engine_ocr(pdf_path, page.page_number))]
+    else:
+        if _is_scanned_page(page):
+            candidates = [("ocr", lambda: _engine_ocr(pdf_path, page.page_number))]
+        else:
+            candidates = [
+                ("plumber", lambda: _engine_plumber(page, text, mode_hint)),
+                ("camelot", lambda: _engine_camelot(pdf_path, page.page_number)),
+                ("tabula", lambda: _engine_tabula(pdf_path, page.page_number)),
+            ]
+    best_rows, best_score = [], 0.0
+    for name, fn in candidates:
+        try:
+            rows = fn() or []
+            s = _score_table(rows)
+            if s > best_score:
+                best_rows, best_score = rows, s
+        except Exception:
+            continue
+    return best_rows
+
+def pdf_to_excel(file_stream_or_path, force_mode: str = "auto", engine: str = "auto") -> bytes:
     """
-    Modes:
-      - 'rpt'   -> tenta RPT_LOJAS e RPT_DESLIGADOS automaticamente
-      - 'table' / 'form'
-      - 'auto' (padrão) -> decide por página (tenta 'rpt' primeiro)
+    force_mode: 'auto' | 'rpt' | 'table' | 'form'  (informa só a engine 'plumber')
+    engine:     'auto' | 'plumber' | 'camelot' | 'tabula' | 'ocr'
     """
     wb = Workbook()
     ws = wb.active
     ws.title = "Dados"
     base = "Dados"
 
-    # trabalhar com caminho físico melhora compatibilidade de pdfplumber
+    # trabalhar com caminho físico
     need_cleanup = False
     if isinstance(file_stream_or_path, (str, os.PathLike)):
         pdf_path = str(file_stream_or_path)
@@ -350,32 +505,15 @@ def pdf_to_excel(file_stream_or_path, force_mode: str = "auto") -> bytes:
         with pdfplumber.open(pdf_path) as pdf:
             for pidx, page in enumerate(pdf.pages, start=1):
                 text = _page_text(page)
-                words = _words(page)
-
-                mode = force_mode
-                if force_mode == "auto":
-                    if _detect_rpt_lojas(text) or _detect_rpt_desligados(text):
-                        mode = "rpt"
-                    else:
-                        mode = _auto_mode(words, text)
-
-                if mode == "rpt":
-                    if _detect_rpt_lojas(text):
-                        rows = _materialize_rpt_lojas(words)
-                    elif _detect_rpt_desligados(text):
-                        rows = _materialize_rpt_desligados(words)
-                    else:
-                        rows = _build_grid_by_gaps_table(words)
-                elif mode == "table":
-                    rows = _build_grid_by_gaps_table(words)
-                elif mode == "form":
-                    rows = _materialize_form(words)
-                else:
-                    rows = [["(Página sem conteúdo)"]]
-
+                mode_hint = force_mode if force_mode in {"form", "table"} else "auto"
+                rows = _extract_best_for_page(
+                    pdf_path=pdf_path, page=page, text=text, mode_hint=mode_hint, engine=engine
+                )
+                if not rows:
+                    rows = [["(Sem conteúdo detectado)"]]
                 if ws.max_row > 0:
-                    ws = _append_rows(wb, ws, base, [[]])  # separador visual
-                ws = _append_rows(wb, ws, base, [[f"Página {pidx} • modo: {mode}"]])
+                    ws = _append_rows(wb, ws, base, [[]])
+                ws = _append_rows(wb, ws, base, [[f"Página {pidx}"]])
                 ws = _append_rows(wb, ws, base, rows)
     finally:
         if need_cleanup and os.path.exists(pdf_path):
@@ -391,13 +529,13 @@ def pdf_to_excel(file_stream_or_path, force_mode: str = "auto") -> bytes:
 
 @app.route("/convert", methods=["OPTIONS"])
 def convert_options():
-    # o flask-cors já responde, mas devolvemos 204 explicitamente
     return make_response("", 204)
 
 @app.post("/convert")
 def convert():
     to_fmt = (request.args.get("to") or "").lower()
-    mode = (request.args.get("mode") or "auto").lower()  # auto|rpt|table|form
+    mode = (request.args.get("mode") or "auto").lower()      # auto|rpt|table|form (para plumber)
+    engine = (request.args.get("engine") or "auto").lower()  # auto|plumber|camelot|tabula|ocr
     f = request.files.get("file")
 
     if to_fmt not in {"excel", "word"}:
@@ -407,7 +545,6 @@ def convert():
     if f.mimetype != "application/pdf":
         return abort(400, "Envie um PDF válido.")
 
-    # tamanho
     f.seek(0, os.SEEK_END)
     size = f.tell()
     f.seek(0)
@@ -424,13 +561,12 @@ def convert():
                 download_name=(f.filename or "arquivo").rsplit(".", 1)[0] + ".docx",
             )
         else:
-            # trabalhar com arquivo físico durante a extração
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
                 tmp.write(f.read())
                 tmp_path = tmp.name
             try:
                 with open(tmp_path, "rb") as fp:
-                    out = pdf_to_excel(fp, force_mode=mode)
+                    out = pdf_to_excel(fp, force_mode=mode, engine=engine)
             finally:
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
@@ -441,9 +577,7 @@ def convert():
                 as_attachment=True,
                 download_name=(f.filename or "arquivo").rsplit(".", 1)[0] + ".xlsx",
             )
-
     except Exception as e:
-        # devolve detalhe para facilitar debug
         return abort(500, f"Falha na conversão: {e}")
 
 
@@ -451,5 +585,4 @@ def convert():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    # host 0.0.0.0 necessário no Render
     app.run(host="0.0.0.0", port=port)

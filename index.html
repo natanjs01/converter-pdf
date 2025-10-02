@@ -4,14 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Converter PDF → Excel | Word • Grátis e Online</title>
-  <meta name="description" content="Converta PDFs para Excel (.xlsx) e Word (.docx) em segundos. Gratuito, seguro e sem cadastro." />
+  <meta name="description" content="Converta PDFs para Excel (.xlsx) e Word (.docx) com qualidade. Grátis, seguro e sem cadastro." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root{
-      --bg:#0b1220; --muted:#94a3b8; --brand:#2563eb; --brand-2:#22d3ee; --ok:#16a34a; --border:#1f2a44;
-    }
+    :root{ --bg:#0b1220; --muted:#94a3b8; --brand:#2563eb; --brand-2:#22d3ee; --ok:#16a34a; --border:#1f2a44; }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
@@ -53,30 +51,29 @@
     .dz:hover{background:#0b1220aa}
     .dz .hint{color:#cbd5e1;font-size:14px}
     .dz .filename{margin-top:8px;color:#e5e7eb;font-weight:600}
-    select,button{
+    select,button,input[type="checkbox"]{
       font:inherit; color:#e5e7eb; background:#0b1220cc; border:1px solid var(--border); border-radius:12px; padding:10px 12px;
-      outline:none; transition:.15s; width:100%;
+      outline:none; transition:.15s;
     }
+    select,button{width:100%}
     select:focus,button:focus{box-shadow:0 0 0 6px #60a5fa55}
     button{background:linear-gradient(180deg, #2563eb, #1e3a8a);border-color:#1d4ed8;font-weight:700;display:inline-flex;gap:10px;align-items:center;justify-content:center}
     button:disabled{opacity:.5;cursor:not-allowed}
     .status{display:inline-flex;gap:8px;align-items:center;color:#cbd5e1;font-size:14px;margin-left:8px}
     .status.ok{color:#86efac}.status.err{color:#fecaca}
 
-    /* Spinner dentro do botão */
-    .spinner{
-      width:16px;height:16px;border:2px solid #93c5fd;border-top-color:transparent;border-radius:50%;
-      animation:spin 1s linear infinite; display:none;
-    }
+    .spinner{width:16px;height:16px;border:2px solid #93c5fd;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;display:none}
     .loading .spinner{display:inline-block}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Barra de progresso */
     .progress{margin-top:10px;background:#0b1220; border:1px solid var(--border); border-radius:999px; height:10px; overflow:hidden}
     .progress-bar{height:100%; width:0%; background:linear-gradient(90deg,#22d3ee,#2563eb); transition:width .2s ease}
     .progress-label{margin-top:6px; font-size:12px; color:#cbd5e1}
 
-    /* Gráfico (canvas) */
+    .adv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .adv2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .small{font-size:12px;color:#cbd5e1}
+
     .chart-wrap{margin-top:12px;border:1px solid var(--border);border-radius:16px;background:#0b122080;padding:10px}
     .chart-meta{display:flex;justify-content:space-between;color:#cbd5e1;font-size:12px;margin-bottom:6px}
 
@@ -94,25 +91,22 @@
     .gimg img{width:100%;height:100%;display:block;object-fit:cover;filter:saturate(1.05) contrast(1.02)}
 
     .footer{max-width:1200px;margin:26px auto 40px;padding:0 20px;color:#94a3b8;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-    .small{font-size:13px}
 
     @media (prefers-color-scheme: light){
       body{color:#0f172a}
-      .h-sub,.dz .hint,.feat p,.status,.progress-label{color:#475569}
+      .h-sub,.dz .hint,.feat p,.status,.progress-label,.small{color:#475569}
       .badge{background:#ffffffaa;color:#334155;border-color:#e2e8f0}
       .card{background:linear-gradient(180deg, #ffffffaa, #ffffffd0)}
       .dz{background:#ffffff; border-color:#93c5fd44}
       .feat{background:#fff;border-color:#e2e8f0}
       .feat-ic{background:#f8fafc;border-color:#e2e8f0}
       select,button{color:#0f172a;background:#fff;border-color:#e2e8f0}
-      .footer{color:#64748b}
       .progress{background:#fff}
       .chart-wrap{background:#fff}
     }
   </style>
 </head>
 <body>
-  <!-- NAV (sem link de Início) -->
   <header class="nav" aria-label="Topo">
     <div class="brand">
       <div class="logo" aria-hidden="true">
@@ -123,20 +117,18 @@
     <div></div>
   </header>
 
-  <!-- HERO -->
   <section class="hero">
     <div class="hero-inner">
       <div>
         <div class="badges">
-          <span class="badge"><svg viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5" /></svg> 100% grátis</span>
-          <span class="badge"><svg viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M5 10h14v10H5z"/></svg> HTTPS seguro</span>
-          <span class="badge"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm-7 9a7 7 0 0 1 14 0"/></svg> Sem cadastro</span>
+          <span class="badge"><svg viewBox="0 0 24 24"><path d="M20 7L9 18l-5-5"/></svg> 100% grátis</span>
+          <span class="badge"><svg viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M5 10h14v10"/></svg> HTTPS seguro</span>
+          <span class="badge"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5"/></svg> Sem cadastro</span>
         </div>
         <h1 class="h-title">Converta PDF para <span style="color:#93c5fd">Excel</span> e <span style="color:#86efac">Word</span> com visual profissional</h1>
-        <p class="h-sub">Arraste seu PDF, escolha o formato e acompanhe o progresso e a velocidade de upload em tempo real.</p>
+        <p class="h-sub">Acompanhe progresso, velocidade e escolha o método de extração ideal para cada arquivo.</p>
       </div>
 
-      <!-- CARD -->
       <div class="card" role="region" aria-label="Conversor PDF">
         <div class="card-head">
           <div class="card-title">Conversor</div>
@@ -159,16 +151,43 @@
           </select>
         </div>
 
+        <!-- Opções avançadas -->
+        <div class="row">
+          <label class="small">Opções avançadas (Excel)</label>
+          <div class="adv">
+            <div>
+              <label class="small" for="mode">Modo</label>
+              <select id="mode">
+                <option value="auto">Auto (recomendado)</option>
+                <option value="rpt">Relatórios (RPT)</option>
+                <option value="table">Tabela</option>
+                <option value="form">Formulário</option>
+              </select>
+            </div>
+            <div>
+              <label class="small" for="engine">Engine</label>
+              <select id="engine" title="Método de extração (Auto tenta vários)">
+                <option value="auto">Auto (melhor por página)</option>
+                <option value="plumber">Plumber (rápido)</option>
+                <option value="camelot">Camelot (tabelas)</option>
+                <option value="tabula">Tabula (tabelas)</option>
+                <option value="ocr">OCR (escaneado)</option>
+              </select>
+            </div>
+          </div>
+          <div class="small" style="margin-top:6px">
+            Dica: <b>Auto</b> tenta Plumber/Camelot/Tabula ou OCR por página e escolhe o melhor. Em planos gratuitos, prefira Plumber para ser mais rápido.
+          </div>
+        </div>
+
         <div class="row" style="display:flex;gap:10px;align-items:center">
           <button id="btn" disabled aria-live="polite"><span class="spinner" aria-hidden="true"></span><span id="btnText">Converter agora</span></button>
           <span id="status" class="status" aria-live="polite"></span>
         </div>
 
-        <!-- Progresso -->
         <div class="progress"><div id="pbar" class="progress-bar"></div></div>
         <div id="plabel" class="progress-label" aria-live="polite" aria-atomic="true"></div>
 
-        <!-- Gráfico de velocidade -->
         <div class="chart-wrap">
           <div class="chart-meta"><span>Velocidade de upload</span><span id="vmax">—</span></div>
           <canvas id="chart" height="140" style="width:100%"></canvas>
@@ -177,25 +196,28 @@
     </div>
   </section>
 
-  <!-- FEATURES -->
   <section class="features" aria-label="Recursos">
     <article class="feat">
       <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M7 3h10M6 11h12M5 15h14M4 19h16"/></svg></div>
-      <div><h3>Planilhas limpas</h3><p>Algoritmo que organiza linhas e evita mistura de colunas em PDFs comuns.</p></div>
+      <div><h3>Planilhas limpas</h3><p>Heurísticas de colunas e detectores de cabeçalho para reduzir mistura.</p></div>
     </article>
     <article class="feat">
       <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v6c0 5-7 8-7 8S5 18 5 13V7l7-4z"/></svg></div>
-      <div><h3>Privado</h3><p>Envio direto ao servidor seguro. Não armazenamos seus arquivos após a conversão.</p></div>
+      <div><h3>Privado</h3><p>Upload seguro via HTTPS. Arquivos não são guardados após a conversão.</p></div>
     </article>
     <article class="feat">
       <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg></div>
-      <div><h3>Interface simples</h3><p>UX direta, com arrastar & soltar, atalho por teclado e feedback instantâneo.</p></div>
+      <div><h3>Feedback em tempo real</h3><p>Barra de progresso, porcentagem e medição de velocidade.</p></div>
     </article>
   </section>
 
-  <!-- FOOTER -->
+  <section class="gallery" aria-label="Exemplos visuais">
+    <div class="gimg"><img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1600&auto=format&fit=crop" alt="Mesa de trabalho com notebook e planilha" loading="lazy"/></div>
+    <div class="gimg"><img src="https://images.unsplash.com/photo-1517433456452-f9633a875f6f?q=80&w=1600&auto=format&fit=crop" alt="Documento de texto em tela" loading="lazy"/></div>
+  </section>
+
   <footer class="footer">
-    <div class="small">© <span id="y"></span> PDF Converter — feito por natanjs01</div>
+    <div>© <span id="y"></span> PDF Converter — feito por natanjs01</div>
     <div class="small">Backend: <code>converter-pdf-01gy.onrender.com</code></div>
   </footer>
 
@@ -205,214 +227,125 @@
     const MAX_MB = 20;
 
     // ====== DOM ======
-    const dropEl = document.getElementById('drop');
+    const drop = document.getElementById('drop');
     const input = document.getElementById('file');
     const btn = document.getElementById('btn');
     const btnText = document.getElementById('btnText');
     const spinner = btn.querySelector('.spinner');
     const format = document.getElementById('format');
+    const mode = document.getElementById('mode');
+    const engine = document.getElementById('engine');
     const statusEl = document.getElementById('status');
     const filenameEl = document.getElementById('filename');
-    const yearEl = document.getElementById('y');
     const pbar = document.getElementById('pbar');
     const plabel = document.getElementById('plabel');
     const chartEl = document.getElementById('chart');
     const vmaxEl = document.getElementById('vmax');
-    yearEl.textContent = new Date().getFullYear();
+    document.getElementById('y').textContent = new Date().getFullYear();
 
-    let picked = null;
-    let fakeTimer = null;
+    let picked = null, fakeTimer = null;
 
-    // ==== helpers ====
-    const setStatus = (msg, type="") => {
-      statusEl.className = "status" + (type ? " "+type : "");
-      statusEl.textContent = msg || "";
-    };
-    const setProgress = (pct) => {
-      const v = Math.max(0, Math.min(100, Math.round(pct)));
-      pbar.style.width = v + "%";
-      plabel.textContent = v + "%";
-    };
-    const startFakeProcessing = () => {
-      let cur = parseInt(pbar.style.width || "0", 10) || 0;
-      clearInterval(fakeTimer);
-      fakeTimer = setInterval(() => {
-        if (cur < 95) { cur += 1; setProgress(cur); }
-        else { clearInterval(fakeTimer); }
-      }, 120);
+    // helpers
+    const setStatus = (msg, type="") => { statusEl.className = "status" + (type ? " "+type : ""); statusEl.textContent = msg || ""; };
+    const setProgress = (pct) => { const v = Math.max(0, Math.min(100, Math.round(pct))); pbar.style.width = v + "%"; plabel.textContent = v + "%"; };
+    const startFakeProcessing = () => { let cur = parseInt(pbar.style.width || "0", 10) || 0; clearInterval(fakeTimer);
+      fakeTimer = setInterval(()=>{ if(cur<95){cur+=1; setProgress(cur);} else {clearInterval(fakeTimer);} }, 120);
     };
     const stopFakeProcessing = () => clearInterval(fakeTimer);
 
-    // ==== chart (velocidade) ====
+    // chart
     const ctx = chartEl.getContext('2d');
-    let chartData = []; // [{t:ms, v: bytes/s}]
-    let chartStart = 0;
-    let maxV = 0;
-
-    function formatSpeed(bps){
-      if (bps >= 1024*1024) return (bps/(1024*1024)).toFixed(2) + " MB/s";
-      if (bps >= 1024) return (bps/1024).toFixed(1) + " KB/s";
-      return Math.round(bps) + " B/s";
-    }
-
+    let chartData = [], maxV = 0;
+    function formatSpeed(bps){ if (bps >= 1024*1024) return (bps/(1024*1024)).toFixed(2) + " MB/s";
+      if (bps >= 1024) return (bps/1024).toFixed(1) + " KB/s"; return Math.round(bps) + " B/s"; }
     function drawChart(){
-      const W = chartEl.clientWidth;
-      const H = chartEl.height;
-      // resize canvas width to device pixels
-      const ratio = window.devicePixelRatio || 1;
-      chartEl.width = W * ratio;
-      ctx.setTransform(ratio,0,0,ratio,0,0);
-      ctx.clearRect(0,0,W,H);
-
-      // axes
-      ctx.strokeStyle = "rgba(148,163,184,.35)";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(36, 8); ctx.lineTo(36, H-20); ctx.lineTo(W-8, H-20); ctx.stroke();
-
-      if(chartData.length < 2){ return; }
-
-      const t0 = chartData[0].t;
-      const t1 = chartData[chartData.length-1].t;
-      const dt = Math.max(1, t1 - t0);
-      const vmax = Math.max(1, maxV);
-
-      // grid horizontal (3 linhas)
-      ctx.strokeStyle = "rgba(148,163,184,.18)";
-      for(let i=1;i<=3;i++){
-        const y = 8 + (H-28)*(1 - i/3);
-        ctx.beginPath(); ctx.moveTo(36,y); ctx.lineTo(W-8, y); ctx.stroke();
-      }
-
-      // line
-      ctx.strokeStyle = "#60a5fa";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      chartData.forEach((p, idx)=>{
-        const x = 36 + (W-44) * ((p.t - t0)/dt);
-        const y = 8 + (H-28) * (1 - (p.v / vmax));
-        if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
-      });
-      ctx.stroke();
-
-      // label vmax
-      ctx.fillStyle = "#cbd5e1";
-      ctx.font = "12px Inter, system-ui, sans-serif";
+      const W = chartEl.clientWidth, H = chartEl.height, r = window.devicePixelRatio || 1;
+      chartEl.width = W * r; ctx.setTransform(r,0,0,r,0,0); ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle="rgba(148,163,184,.35)"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(36,8); ctx.lineTo(36,H-20); ctx.lineTo(W-8,H-20); ctx.stroke();
+      if(chartData.length<2) return;
+      const t0=chartData[0].t, t1=chartData[chartData.length-1].t, dt=Math.max(1,t1-t0), vmax=Math.max(1,maxV);
+      ctx.strokeStyle="rgba(148,163,184,.18)";
+      for(let i=1;i<=3;i++){ const y=8+(H-28)*(1-i/3); ctx.beginPath(); ctx.moveTo(36,y); ctx.lineTo(W-8,y); ctx.stroke(); }
+      ctx.strokeStyle="#60a5fa"; ctx.lineWidth=2; ctx.beginPath();
+      chartData.forEach((p,i)=>{ const x=36+(W-44)*((p.t-t0)/dt); const y=8+(H-28)*(1-(p.v/vmax)); if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
       vmaxEl.textContent = "pico: " + formatSpeed(maxV);
     }
-
     window.addEventListener('resize', drawChart);
 
     function handleFile(f){
       if(!f) return;
       if(f.type !== "application/pdf"){ alert("Selecione um arquivo PDF."); return; }
       if(f.size > MAX_MB*1024*1024){ alert(`Limite de ${MAX_MB} MB.`); return; }
-      picked = f;
-      filenameEl.textContent = "Selecionado: " + f.name;
-      btn.disabled = false;
-      setStatus("");
-      setProgress(0);
-      plabel.textContent = "";
+      picked = f; filenameEl.textContent = "Selecionado: " + f.name; btn.disabled = false; setStatus(""); setProgress(0); plabel.textContent = "";
       chartData = []; maxV = 0; drawChart();
     }
 
-    // DnD e acessibilidade
-    dropEl.addEventListener('click', () => input.click());
-    dropEl.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }});
-    dropEl.addEventListener('dragover', (e) => { e.preventDefault(); dropEl.style.opacity=.95; });
-    dropEl.addEventListener('dragleave', () => { dropEl.style.opacity=1; });
-    dropEl.addEventListener('drop', (e) => {
-      e.preventDefault(); dropEl.style.opacity=1; handleFile(e.dataTransfer.files?.[0]);
-    });
-    input.addEventListener('change', () => handleFile(input.files?.[0]));
+    drop.addEventListener('click', ()=> input.click());
+    drop.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); input.click(); }});
+    drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.style.opacity=.95; });
+    drop.addEventListener('dragleave', ()=>{ drop.style.opacity=1; });
+    drop.addEventListener('drop', (e)=>{ e.preventDefault(); drop.style.opacity=1; handleFile(e.dataTransfer.files?.[0]); });
+    input.addEventListener('change', ()=> handleFile(input.files?.[0]));
 
-    // Envio com XHR (progresso + gráfico)
+    // envio com XHR (progresso + gráfico)
     btn.addEventListener('click', () => {
       if(!picked) return;
-
-      btn.disabled = true;
-      btn.classList.add('loading'); btnText.textContent = "Enviando…";
+      btn.disabled = true; btn.classList.add('loading'); btnText.textContent = "Enviando…";
       setStatus("Enviando arquivo…"); setProgress(1);
 
       const fd = new FormData(); fd.append('file', picked);
+      const url = `${API}/convert?to=${encodeURIComponent(format.value)}`
+        + (format.value === 'excel' ? `&mode=${encodeURIComponent(mode.value)}&engine=${encodeURIComponent(engine.value)}` : "");
+
       const xhr = new XMLHttpRequest();
-      const url = `${API}/convert?to=${encodeURIComponent(format.value)}`;
-      xhr.open("POST", url, true);
-      xhr.responseType = "blob";
+      xhr.open("POST", url, true); xhr.responseType = "blob";
 
-      // Preparar série do gráfico
-      chartData = []; chartStart = performance.now(); maxV = 0; drawChart();
-
-      let lastLoaded = 0;
-      let lastT = chartStart;
+      chartData = []; let lastLoaded = 0; let lastT = performance.now(); maxV = 0; drawChart();
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
-          // progresso upload
-          const pct = (e.loaded / e.total) * 75; // até 75% no upload
-          setProgress(pct);
-          plabel.textContent = `Enviando… ${Math.round(pct)}%`;
-
-          // velocidade instantânea
-          const now = performance.now();
-          const dt = (now - lastT) / 1000; // s
-          const db = e.loaded - lastLoaded; // bytes
+          const pct = (e.loaded / e.total) * 75; setProgress(pct); plabel.textContent = `Enviando… ${Math.round(pct)}%`;
+          const now = performance.now(), dt = (now - lastT)/1000, db = e.loaded - lastLoaded;
           if (dt > 0.08) {
-            const bps = db / dt;
-            maxV = Math.max(maxV, bps);
-            chartData.push({ t: now, v: bps });
-            lastLoaded = e.loaded; lastT = now;
-            drawChart();
+            const bps = db/dt; maxV = Math.max(maxV, bps);
+            chartData.push({t: now, v: bps}); lastLoaded = e.loaded; lastT = now; drawChart();
           }
         }
       };
 
-      xhr.onloadstart = () => { setProgress(5); };
+      xhr.onloadstart = ()=> setProgress(5);
 
       xhr.onload = () => {
         stopFakeProcessing();
         if (xhr.status >= 200 && xhr.status < 300) {
-          btnText.textContent = "Finalizando…";
-          setStatus("Finalizando…");
-          setProgress(100);
-
+          btnText.textContent = "Finalizando…"; setStatus("Finalizando…"); setProgress(100);
           const blob = xhr.response;
-          const outName = picked.name.replace(/\.pdf$/i, '') + (format.value === 'excel' ? '.xlsx' : '.docx');
-          const link = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = link; a.download = outName; document.body.appendChild(a); a.click();
-          a.remove(); URL.revokeObjectURL(link);
-
-          setStatus("Pronto!", "ok");
-          btnText.textContent = "Converter agora";
+          const outName = picked.name.replace(/\.pdf$/i,'') + (format.value === 'excel' ? '.xlsx' : '.docx');
+          const link = URL.createObjectURL(blob); const a = document.createElement('a');
+          a.href = link; a.download = outName; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(link);
+          setStatus("Pronto!", "ok"); btnText.textContent = "Converter agora";
         } else {
-          setStatus("Erro ao converter", "err");
-          const reader = new FileReader();
-          reader.onload = () => alert("Falha na conversão: " + reader.result);
+          setStatus("Erro ao converter", "err"); btnText.textContent = "Converter agora";
+          const reader = new FileReader(); reader.onload = () => alert("Falha na conversão: " + reader.result);
           reader.readAsText(xhr.response || new Blob(["Erro " + xhr.status]));
-          btnText.textContent = "Converter agora";
         }
         btn.classList.remove('loading'); btn.disabled = false;
       };
 
       xhr.onerror = () => {
-        stopFakeProcessing();
-        setStatus("Erro de conexão", "err");
-        btn.classList.remove('loading'); btn.disabled = false;
-        btnText.textContent = "Converter agora";
+        stopFakeProcessing(); setStatus("Erro de conexão", "err");
+        btn.classList.remove('loading'); btn.disabled = false; btnText.textContent = "Converter agora";
         alert("Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.");
       };
 
-      xhr.onloadend = () => { stopFakeProcessing(); };
+      xhr.onloadend = () => stopFakeProcessing();
 
       xhr.send(fd);
 
-      // Durante o processamento no servidor (após o upload),
-      // anima a barra de 80% -> 95% suavemente.
       setTimeout(() => {
         setStatus("Processando…");
         const cur = parseInt(pbar.style.width || "0", 10) || 0;
         if (cur < 80) setProgress(80);
-        // mostra spinner de processamento:
         btn.classList.add('loading'); btnText.textContent = "Processando…";
         startFakeProcessing();
       }, 400);

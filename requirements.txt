@@ -1,3 +1,8 @@
+flask
+flask-cors
+pdfplumber
+python-docx
+openpyxl
 camelot-py[cv]
 tabula-py
 pdf2image
