@@ -67,6 +67,11 @@
     .status{display:inline-flex;gap:8px;align-items:center;color:#cbd5e1;font-size:14px;margin-left:8px}
     .status.ok{color:#86efac}.status.err{color:#fecaca}
 
+    /* PROGRESSO */
+    .progress{margin-top:10px;background:#0b1220; border:1px solid var(--border); border-radius:999px; height:10px; overflow:hidden; position:relative}
+    .progress-bar{height:100%; width:0%; background:linear-gradient(90deg,#22d3ee,#2563eb); transition:width .2s ease}
+    .progress-label{margin-top:6px; font-size:12px; color:#cbd5e1}
+
     .features{max-width:1200px;margin:28px auto;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
     @media (max-width:980px){.features{grid-template-columns:1fr}}
     .feat{background:#0b1220cc;border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;gap:12px}
@@ -86,7 +91,7 @@
     /* Light mode preferido pelo SO */
     @media (prefers-color-scheme: light){
       body{color:#0f172a}
-      .h-sub,.dz .hint,.feat p,.status{color:#475569}
+      .h-sub,.dz .hint,.feat p,.status,.progress-label{color:#475569}
       .badge{background:#ffffffaa;color:#334155;border-color:#e2e8f0}
       .card{background:linear-gradient(180deg, #ffffffaa, #ffffffd0)}
       .dz{background:#ffffff; border-color:#93c5fd44}
@@ -94,11 +99,12 @@
       .feat-ic{background:#f8fafc;border-color:#e2e8f0}
       select,button{color:#0f172a;background:#fff;border-color:#e2e8f0}
       .footer{color:#64748b}
+      .progress{background:#fff}
     }
   </style>
 </head>
 <body>
-  <!-- NAV -->
+  <!-- NAV (SEM link Início) -->
   <header class="nav" aria-label="Topo">
     <div class="brand">
       <div class="logo" aria-hidden="true">
@@ -106,9 +112,7 @@
       </div>
       <span>PDF Converter</span>
     </div>
-    <nav class="small" aria-label="Links">
-      <a href="https://natanjs01.github.io">Início</a>
-    </nav>
+    <div></div>
   </header>
 
   <!-- HERO -->
@@ -127,7 +131,7 @@
           </span>
         </div>
         <h1 class="h-title">Converta PDF para <span style="color:#93c5fd">Excel</span> e <span style="color:#86efac">Word</span> com visual profissional</h1>
-        <p class="h-sub">Arraste seu PDF, escolha o formato e receba um arquivo limpo e organizado. Rápido, gratuito e privado.</p>
+        <p class="h-sub">Arraste seu PDF, escolha o formato e acompanhe o progresso em tempo real. Rápido, gratuito e privado.</p>
       </div>
 
       <!-- CARD DE CONVERSÃO -->
@@ -154,11 +158,15 @@
         </div>
 
         <div class="row" style="display:flex;gap:10px;align-items:center">
-          <button id="btn" disabled aria-live="polite">
-            Converter agora
-          </button>
+          <button id="btn" disabled aria-live="polite">Converter agora</button>
           <span id="status" class="status" aria-live="polite"></span>
         </div>
+
+        <!-- Barra de progresso -->
+        <div class="progress" aria-hidden="true">
+          <div id="pbar" class="progress-bar"></div>
+        </div>
+        <div id="plabel" class="progress-label" aria-live="polite" aria-atomic="true"></div>
       </div>
     </div>
   </section>
@@ -187,7 +195,7 @@
 
   <!-- FOOTER -->
   <footer class="footer">
-    <div class="small">© <span id="y"></span> PDF Converter — feito por <a href="https://natanjs01.github.io">natanjs01</a></div>
+    <div class="small">© <span id="y"></span> PDF Converter — feito por natanjs01</div>
     <div class="small">Backend seguro: <code>converter-pdf-01gy.onrender.com</code></div>
   </footer>
 
@@ -204,15 +212,32 @@
     const statusEl = document.getElementById('status');
     const filenameEl = document.getElementById('filename');
     const yearEl = document.getElementById('y');
+    const pbar = document.getElementById('pbar');
+    const plabel = document.getElementById('plabel');
     yearEl.textContent = new Date().getFullYear();
 
     let picked = null;
+    let fakeTimer = null;
+
     const setStatus = (msg, type="") => {
       statusEl.className = "status" + (type ? " "+type : "");
       statusEl.textContent = msg || "";
     };
-
-    const okAPI = () => API && API.startsWith("https://");
+    const setProgress = (pct) => {
+      const v = Math.max(0, Math.min(100, Math.round(pct)));
+      pbar.style.width = v + "%";
+      plabel.textContent = v + "%";
+    };
+    const startFakeProcessing = () => {
+      // avança suavemente de onde estiver até 95%
+      let cur = parseInt(pbar.style.width || "0", 10) || 0;
+      clearInterval(fakeTimer);
+      fakeTimer = setInterval(() => {
+        if (cur < 95) { cur += 1; setProgress(cur); }
+        else { clearInterval(fakeTimer); }
+      }, 120);
+    };
+    const stopFakeProcessing = () => { clearInterval(fakeTimer); };
 
     function handleFile(f){
       if(!f) return;
@@ -220,11 +245,13 @@
       if(f.size > MAX_MB*1024*1024){ alert(`Limite de ${MAX_MB} MB.`); return; }
       picked = f;
       filenameEl.textContent = "Selecionado: " + f.name;
-      btn.disabled = !okAPI();
+      btn.disabled = false;
       setStatus("");
+      setProgress(0);
+      plabel.textContent = "";
     }
 
-    // Acessibilidade: clique/teclado
+    // Acessibilidade: clique/teclado e DnD
     drop.addEventListener('click', () => input.click());
     drop.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }});
     drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.opacity=.95; });
@@ -235,38 +262,78 @@
     });
     input.addEventListener('change', () => handleFile(input.files?.[0]));
 
-    btn.addEventListener('click', async () => {
+    // Envio usando XMLHttpRequest para ter progresso real de upload
+    btn.addEventListener('click', () => {
       if(!picked) return;
-      if(!okAPI()){ alert("API inválida."); return; }
 
       btn.disabled = true;
-      setStatus("Convertendo…");
+      setStatus("Enviando arquivo…");
+      setProgress(1);
 
-      try{
-        const fd = new FormData();
-        fd.append('file', picked);
-        const url = `${API}/convert?to=${encodeURIComponent(format.value)}`;
-        const res = await fetch(url, { method:"POST", body:fd });
+      const fd = new FormData();
+      fd.append('file', picked);
 
-        if(!res.ok){
-          const t = await res.text().catch(()=> "");
-          throw new Error(t || `Erro HTTP ${res.status}`);
+      const xhr = new XMLHttpRequest();
+      const url = `${API}/convert?to=${encodeURIComponent(format.value)}`;
+      xhr.open("POST", url, true);
+      xhr.responseType = "blob";
+
+      // Progresso de upload real
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = (e.loaded / e.total) * 75; // até 75% durante upload
+          setProgress(pct);
+          plabel.textContent = `Enviando… ${Math.round(pct)}%`;
         }
+      };
 
-        const blob = await res.blob();
-        const outName = picked.name.replace(/\.pdf$/i,'') + (format.value === 'excel' ? '.xlsx' : '.docx');
-        const link = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = link; a.download = outName; document.body.appendChild(a); a.click();
-        a.remove(); URL.revokeObjectURL(link);
-        setStatus("Pronto!", "ok");
-      }catch(e){
-        console.error(e);
-        setStatus("Erro ao converter", "err");
-        alert("Falha na conversão: " + e.message);
-      }finally{
+      xhr.onloadstart = () => {
+        setProgress(5);
+      };
+
+      xhr.onload = () => {
+        stopFakeProcessing();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setStatus("Finalizando…");
+          setProgress(100);
+          const blob = xhr.response;
+          const outName = picked.name.replace(/\.pdf$/i, '') + (format.value === 'excel' ? '.xlsx' : '.docx');
+          const link = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = link; a.download = outName; document.body.appendChild(a); a.click();
+          a.remove(); URL.revokeObjectURL(link);
+          setStatus("Pronto!", "ok");
+        } else {
+          setStatus("Erro ao converter", "err");
+          const reader = new FileReader();
+          reader.onload = () => alert("Falha na conversão: " + reader.result);
+          reader.readAsText(xhr.response || new Blob(["Erro " + xhr.status]));
+        }
         btn.disabled = false;
-      }
+      };
+
+      xhr.onerror = () => {
+        stopFakeProcessing();
+        setStatus("Erro de conexão", "err");
+        btn.disabled = false;
+        alert("Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.");
+      };
+
+      xhr.onloadend = () => {
+        stopFakeProcessing();
+      };
+
+      xhr.send(fd);
+
+      // Enquanto aguardamos o processamento no servidor (após upload),
+      // anima a barra de 80% -> 95% suavemente.
+      setTimeout(() => {
+        setStatus("Processando…");
+        // coloca 80% caso o upload tenha sido muito rápido
+        const cur = parseInt(pbar.style.width || "0", 10) || 0;
+        if (cur < 80) setProgress(80);
+        startFakeProcessing();
+      }, 400);
     });
   </script>
 </body>
