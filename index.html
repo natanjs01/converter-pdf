@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Converter PDF → Excel | Word</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    .card { max-width: 560px; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 12px; }
+    .row { margin: .75rem 0; }
+    .dropzone {
+      border: 2px dashed #9ca3af; padding: 1.5rem; text-align: center; border-radius: 10px; cursor: pointer;
+    }
+    button { padding: .6rem 1rem; border: 0; border-radius: 8px; background: #111827; color: white; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .hint { color: #6b7280; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>Converter PDF → Excel | Word</h1>
+  <div class="card">
+    <div class="row">
+      <label class="hint">Selecione um PDF (máx. 20 MB)</label>
+      <div id="drop" class="dropzone">Arraste o PDF aqui ou clique para selecionar</div>
+      <input id="file" type="file" accept="application/pdf" hidden />
+    </div>
+
+    <div class="row">
+      <label for="format">Formato de saída:</label>
+      <select id="format">
+        <option value="excel">Excel (.xlsx)</option>
+        <option value="word">Word (.docx)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <button id="btn" disabled>Converter</button>
+      <span id="status" class="hint" style="margin-left:.75rem;"></span>
+    </div>
+  </div>
+
+  <script>
+    const drop = document.getElementById('drop');
+    const input = document.getElementById('file');
+    const btn = document.getElementById('btn');
+    const format = document.getElementById('format');
+    const statusEl = document.getElementById('status');
+    let picked = null;
+
+    function setStatus(msg) { statusEl.textContent = msg || ''; }
+
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.background = '#f3f4f6'; });
+    drop.addEventListener('dragleave', () => { drop.style.background = ''; });
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault(); drop.style.background = '';
+      const f = e.dataTransfer.files?.[0];
+      if (f) handleFile(f);
+    });
+    input.addEventListener('change', () => {
+      const f = input.files?.[0];
+      if (f) handleFile(f);
+    });
+
+    function handleFile(f) {
+      if (f.type !== 'application/pdf') { alert('Selecione um arquivo PDF.'); return; }
+      if (f.size > 20 * 1024 * 1024) { alert('Limite de 20 MB.'); return; }
+      picked = f;
+      drop.textContent = `Selecionado: ${f.name}`;
+      btn.disabled = false;
+      setStatus('');
+    }
+
+    btn.addEventListener('click', async () => {
+      if (!picked) return;
+      btn.disabled = true; setStatus('Convertendo...');
+      try {
+        const fd = new FormData();
+        fd.append('file', picked);
+        // aqui usamos apenas "/convert", pois o HTML será servido pelo Flask na mesma origem
+        const res = await fetch("/convert?to=" + format.value, { method: "POST", body: fd });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(t || `Erro ${res.status}`);
+        }
+        const blob = await res.blob();
+        const outName = picked.name.replace(/\.pdf$/i, '') + (format.value === 'excel' ? '.xlsx' : '.docx');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = outName; document.body.appendChild(a); a.click();
+        a.remove(); URL.revokeObjectURL(url);
+        setStatus('Pronto ✅');
+      } catch (e) {
+        console.error(e); alert('Falha na conversão: ' + e.message); setStatus('Erro');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
