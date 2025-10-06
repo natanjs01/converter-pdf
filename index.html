@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Converter PDF → Excel | Word • Grátis e Online</title>
-  <meta name="description" content="Converta PDFs para Excel (.xlsx) e Word (.docx) com qualidade. Grátis, seguro e sem cadastro." />
+  <meta name="description" content="Converta PDFs para Excel (.xlsx) e Word (.docx) automaticamente, com barra de progresso e interface moderna." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -51,13 +51,13 @@
     .dz:hover{background:#0b1220aa}
     .dz .hint{color:#cbd5e1;font-size:14px}
     .dz .filename{margin-top:8px;color:#e5e7eb;font-weight:600}
-    select,button,input[type="checkbox"]{
+    button{
       font:inherit; color:#e5e7eb; background:#0b1220cc; border:1px solid var(--border); border-radius:12px; padding:10px 12px;
-      outline:none; transition:.15s;
+      outline:none; transition:.15s; width:100%;
     }
-    select,button{width:100%}
-    select:focus,button:focus{box-shadow:0 0 0 6px #60a5fa55}
-    button{background:linear-gradient(180deg, #2563eb, #1e3a8a);border-color:#1d4ed8;font-weight:700;display:inline-flex;gap:10px;align-items:center;justify-content:center}
+    button:focus{box-shadow:0 0 0 6px #60a5fa55}
+    .btn-primary{background:linear-gradient(180deg, #2563eb, #1e3a8a);border-color:#1d4ed8;font-weight:700;display:inline-flex;gap:10px;align-items:center;justify-content:center}
+    .btn-ghost{background:#0b1220;border-color:#1f2a44}
     button:disabled{opacity:.5;cursor:not-allowed}
     .status{display:inline-flex;gap:8px;align-items:center;color:#cbd5e1;font-size:14px;margin-left:8px}
     .status.ok{color:#86efac}.status.err{color:#fecaca}
@@ -69,10 +69,6 @@
     .progress{margin-top:10px;background:#0b1220; border:1px solid var(--border); border-radius:999px; height:10px; overflow:hidden}
     .progress-bar{height:100%; width:0%; background:linear-gradient(90deg,#22d3ee,#2563eb); transition:width .2s ease}
     .progress-label{margin-top:6px; font-size:12px; color:#cbd5e1}
-
-    .adv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-    .adv2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-    .small{font-size:12px;color:#cbd5e1}
 
     .chart-wrap{margin-top:12px;border:1px solid var(--border);border-radius:16px;background:#0b122080;padding:10px}
     .chart-meta{display:flex;justify-content:space-between;color:#cbd5e1;font-size:12px;margin-bottom:6px}
@@ -100,12 +96,14 @@
       .dz{background:#ffffff; border-color:#93c5fd44}
       .feat{background:#fff;border-color:#e2e8f0}
       .feat-ic{background:#f8fafc;border-color:#e2e8f0}
-      select,button{color:#0f172a;background:#fff;border-color:#e2e8f0}
+      button{color:#0f172a;background:#fff;border-color:#e2e8f0}
+      .btn-primary{color:#fff;background:linear-gradient(180deg, #2563eb, #1e3a8a)}
+      .btn-ghost{background:#fff}
       .progress{background:#fff}
       .chart-wrap{background:#fff}
     }
 
-    /* ===== Ajuda (modal) ===== */
+    /* Ajuda (modal) */
     .help-btn{
       font:inherit; padding:8px 12px; border-radius:10px; border:1px solid var(--border);
       background:#0b1220cc; color:#e5e7eb; cursor:pointer;
@@ -124,13 +122,10 @@
     .modal header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
     .modal h2{font-size:20px;margin:0}
     .modal .close{background:transparent;border:1px solid var(--border);color:inherit;border-radius:10px;padding:6px 10px;cursor:pointer}
-    .modal .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:900px){ .modal .grid{grid-template-columns:1fr} }
-    .modal section{border:1px solid var(--border);border-radius:12px;padding:12px;background:#0b122088}
+    .modal section{border:1px solid var(--border);border-radius:12px;padding:12px;background:#0b122088;margin-top:10px}
     .modal h3{margin:0 0 6px 0;font-size:16px}
     .modal ul{margin:0 0 0 16px;padding:0}
     .modal li{margin:4px 0}
-    .modal code{background:#0b1220; border:1px solid var(--border); padding:2px 6px; border-radius:6px}
     .badge-k{font-size:12px;border:1px solid var(--border);padding:2px 6px;border-radius:6px}
   </style>
 </head>
@@ -153,8 +148,8 @@
           <span class="badge"><svg viewBox="0 0 24 24"><path d="M6 10V7a6 6 0 0 1 12 0v3M5 10h14v10"/></svg> HTTPS seguro</span>
           <span class="badge"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0-5-5"/></svg> Sem cadastro</span>
         </div>
-        <h1 class="h-title">Converta PDF para <span style="color:#93c5fd">Excel</span> e <span style="color:#86efac">Word</span> com visual profissional</h1>
-        <p class="h-sub">Acompanhe progresso, velocidade e escolha o método de extração ideal para cada arquivo.</p>
+        <h1 class="h-title">Converta PDF para <span style="color:#93c5fd">Excel</span> e <span style="color:#86efac">Word</span> automaticamente</h1>
+        <p class="h-sub">Você só envia o arquivo. Nós escolhemos a melhor extração e te entregamos a planilha ou o documento.</p>
       </div>
 
       <div class="card" role="region" aria-label="Conversor PDF">
@@ -171,45 +166,9 @@
           <input id="file" type="file" accept="application/pdf" hidden />
         </div>
 
-        <div class="row">
-          <label class="small" for="format">Formato de saída</label>
-          <select id="format" aria-label="Selecione o formato">
-            <option value="excel">Excel (.xlsx)</option>
-            <option value="word">Word (.docx)</option>
-          </select>
-        </div>
-
-        <!-- Opções avançadas -->
-        <div class="row">
-          <label class="small">Opções avançadas (Excel)</label>
-          <div class="adv">
-            <div>
-              <label class="small" for="mode">Modo</label>
-              <select id="mode">
-                <option value="auto">Auto (recomendado)</option>
-                <option value="rpt">Relatórios (RPT)</option>
-                <option value="table">Tabela</option>
-                <option value="form">Formulário</option>
-              </select>
-            </div>
-            <div>
-              <label class="small" for="engine">Engine</label>
-              <select id="engine" title="Método de extração (Auto tenta vários)">
-                <option value="auto">Auto (melhor por página)</option>
-                <option value="plumber">Plumber (rápido)</option>
-                <option value="camelot">Camelot (tabelas)</option>
-                <option value="tabula">Tabula (tabelas)</option>
-                <option value="ocr">OCR (escaneado)</option>
-              </select>
-            </div>
-          </div>
-          <div class="small" style="margin-top:6px">
-            Dica: <b>Auto</b> tenta Plumber/Camelot/Tabula ou OCR por página e escolhe o melhor. Em planos gratuitos, prefira Plumber para ser mais rápido.
-          </div>
-        </div>
-
         <div class="row" style="display:flex;gap:10px;align-items:center">
-          <button id="btn" disabled aria-live="polite"><span class="spinner" aria-hidden="true"></span><span id="btnText">Converter agora</span></button>
+          <button id="btnExcel" class="btn-primary" disabled><span class="spinner" aria-hidden="true"></span><span>Para Excel (.xlsx)</span></button>
+          <button id="btnWord" class="btn-ghost"   disabled><span class="spinner" aria-hidden="true"></span><span>Para Word (.docx)</span></button>
           <span id="status" class="status" aria-live="polite"></span>
         </div>
 
@@ -227,7 +186,7 @@
   <section class="features" aria-label="Recursos">
     <article class="feat">
       <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M4 7h16M7 3h10M6 11h12M5 15h14M4 19h16"/></svg></div>
-      <div><h3>Planilhas limpas</h3><p>Heurísticas de colunas e detectores de cabeçalho para reduzir mistura.</p></div>
+      <div><h3>Planilhas limpas</h3><p>Detecta múltiplas tabelas, cabeçalho persistente e tipagem de números/datas.</p></div>
     </article>
     <article class="feat">
       <div class="feat-ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 4v6c0 5-7 8-7 8S5 18 5 13V7l7-4z"/></svg></div>
@@ -246,76 +205,32 @@
 
   <footer class="footer">
     <div>© <span id="y"></span> PDF Converter — feito por natanjs01</div>
-    <div class="small">Backend: <code>converter-pdf-01gy.onrender.com</code></div>
+    <div class="small">Backend: <code>converter-pdf-01gy.onrender.com</code> (auto)</div>
   </footer>
 
-  <!-- ===== Modal de Ajuda ===== -->
+  <!-- Ajuda -->
   <div id="helpModalBackdrop" class="modal-backdrop" role="presentation" hidden>
     <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
       <header>
-        <h2 id="helpTitle">Como escolher as opções de extração</h2>
+        <h2 id="helpTitle">Como funciona a conversão automática</h2>
         <button class="close" id="helpClose" aria-label="Fechar (Esc)">Fechar ✕</button>
       </header>
 
-      <div class="grid">
-        <section>
-          <h3>Formatos</h3>
-          <ul>
-            <li><b>Excel (.xlsx)</b>: cria uma planilha única “Dados”. Cabeçalho pode ser inserido quando o PDF não repete entre páginas.</li>
-            <li><b>Word (.docx)</b>: texto corrido por página.</li>
-          </ul>
-        </section>
+      <section>
+        <h3>O que eu preciso fazer?</h3>
+        <p>Somente selecione o PDF e clique no formato desejado. O sistema identifica o conteúdo e aplica a melhor técnica.</p>
+      </section>
 
-        <section>
-          <h3>Engine (método de extração)</h3>
-          <ul>
-            <li><b>Auto</b>: tenta Plumber/Camelot/Tabula (ou OCR se escaneado) e escolhe o melhor por página.</li>
-            <li><b>Plumber</b>: rápido e robusto; ótimo para páginas com texto organizado (sem linhas) e <b>duas colunas</b>.</li>
-            <li><b>Camelot</b>: melhor quando há <i>linhas de tabela</i> visíveis.</li>
-            <li><b>Tabula</b>: bom para tabelas densas sem linhas de grade.</li>
-            <li><b>OCR</b>: use para <b>PDF escaneado</b> (imagem). Mais lento.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Modo (Excel)</h3>
-          <ul>
-            <li><b>Auto</b>: detecta automaticamente Tabela/Formulário/RPT.</li>
-            <li><b>Tabela</b>: força grade por colunas — ideal p/ relatórios tabulares.</li>
-            <li><b>Formulário</b>: junta rótulo:valor (ex.: “Placa: ABC-1234”).</li>
-            <li><b>Relatórios (RPT)</b>: otimizações para modelos com “LOJA …”, cabeçalho inteligente e coluna “Loja”.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Receitas rápidas</h3>
-          <ul>
-            <li>Relatórios de lojas (“LOJA n = …”): <code>Engine=Plumber</code> + <code>Modo=RPT</code> (ou <code>Auto</code>).</li>
-            <li>Tabela com linhas de grade: <code>Engine=Camelot</code> + <code>Modo=Tabela</code>.</li>
-            <li>Tabela densa sem linhas: <code>Engine=Tabula</code> + <code>Modo=Tabela</code>.</li>
-            <li>Página em <b>duas colunas</b> (Folha Geral Analítica): <code>Engine=Plumber</code> + <code>Modo=Tabela</code>.</li>
-            <li>PDF escaneado/foto: <code>Engine=OCR</code> (+ <code>Modo=Tabela</code>).</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Sinais de escolha errada</h3>
-          <ul>
-            <li>“Pegou só metade da página” → troque para <b>Plumber</b>.</li>
-            <li>“Colunas misturadas” → tente <b>Modo=Tabela</b> (Camelot/Tabula se houver linhas).</li>
-            <li>“Texto ilegível” → se for imagem, use <b>OCR</b>; se não for, evite OCR.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Limites & privacidade</h3>
-          <ul>
-            <li>Tamanho máximo: <b>20 MB</b>.</li>
-            <li>Arquivos processados na memória; não são armazenados.</li>
-            <li>Se der erro, tente outra engine/mode ou divida o PDF.</li>
-          </ul>
-        </section>
-      </div>
+      <section>
+        <h3>O que acontece por baixo dos panos</h3>
+        <ul>
+          <li>Detecta <b>duas colunas</b> e extrai corretamente.</li>
+          <li>Identifica <b>múltiplas tabelas</b> na mesma página.</li>
+          <li>Reconhece relatórios do tipo <b>RPT</b> e repete cabeçalhos/“Loja”.</li>
+          <li>Remove ruídos (ex.: “Página X”), tipa <b>datas e valores</b> e ajusta largura das colunas.</li>
+          <li>Se o PDF for imagem/escaneado, usa <b>OCR</b> automaticamente.</li>
+        </ul>
+      </section>
 
       <p class="small" style="margin-top:10px">
         Atalhos: <span class="badge-k">?</span> abre • <span class="badge-k">Esc</span> fecha • Tab navega no diálogo.
@@ -331,14 +246,9 @@
     // ====== DOM ======
     const drop = document.getElementById('drop');
     const input = document.getElementById('file');
-    const btn = document.getElementById('btn');
-    const btnText = document.getElementById('btnText');
-    const spinner = btn.querySelector('.spinner');
-    const format = document.getElementById('format');
-    const mode = document.getElementById('mode');
-    const engine = document.getElementById('engine');
+    const btnExcel = document.getElementById('btnExcel');
+    const btnWord  = document.getElementById('btnWord');
     const statusEl = document.getElementById('status');
-    const filenameEl = document.getElementById('filename');
     const pbar = document.getElementById('pbar');
     const plabel = document.getElementById('plabel');
     const chartEl = document.getElementById('chart');
@@ -347,7 +257,6 @@
 
     let picked = null, fakeTimer = null;
 
-    // helpers
     const setStatus = (msg, type="") => { statusEl.className = "status" + (type ? " "+type : ""); statusEl.textContent = msg || ""; };
     const setProgress = (pct) => { const v = Math.max(0, Math.min(100, Math.round(pct))); pbar.style.width = v + "%"; plabel.textContent = v + "%"; };
     const startFakeProcessing = () => { let cur = parseInt(pbar.style.width || "0", 10) || 0; clearInterval(fakeTimer);
@@ -378,10 +287,13 @@
       if(!f) return;
       if(f.type !== "application/pdf"){ alert("Selecione um arquivo PDF."); return; }
       if(f.size > MAX_MB*1024*1024){ alert(`Limite de ${MAX_MB} MB.`); return; }
-      picked = f; filenameEl.textContent = "Selecionado: " + f.name; btn.disabled = false; setStatus(""); setProgress(0); plabel.textContent = "";
+      picked = f; document.getElementById('filename').textContent = "Selecionado: " + f.name;
+      btnExcel.disabled = false; btnWord.disabled = false;
+      setStatus(""); setProgress(0); plabel.textContent = "";
       chartData = []; maxV = 0; drawChart();
     }
 
+    // dropzone
     drop.addEventListener('click', ()=> input.click());
     drop.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); input.click(); }});
     drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.style.opacity=.95; });
@@ -389,15 +301,17 @@
     drop.addEventListener('drop', (e)=>{ e.preventDefault(); drop.style.opacity=1; handleFile(e.dataTransfer.files?.[0]); });
     input.addEventListener('change', ()=> handleFile(input.files?.[0]));
 
-    // envio com XHR (progresso + gráfico)
-    btn.addEventListener('click', () => {
+    // envio
+    function convert(format){
       if(!picked) return;
-      btn.disabled = true; btn.classList.add('loading'); btnText.textContent = "Enviando…";
-      setStatus("Enviando arquivo…"); setProgress(1);
+      const btn = format === 'excel' ? btnExcel : btnWord;
+      const other = format === 'excel' ? btnWord : btnExcel;
+
+      btn.disabled = true; other.disabled = true;
+      btn.classList.add('loading'); setStatus("Enviando arquivo…"); setProgress(1);
 
       const fd = new FormData(); fd.append('file', picked);
-      const url = `${API}/convert?to=${encodeURIComponent(format.value)}`
-        + (format.value === 'excel' ? `&mode=${encodeURIComponent(mode.value)}&engine=${encodeURIComponent(engine.value)}` : "");
+      const url = `${API}/convert?to=${encodeURIComponent(format)}`; // auto tudo
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url, true); xhr.responseType = "blob";
@@ -420,23 +334,23 @@
       xhr.onload = () => {
         stopFakeProcessing();
         if (xhr.status >= 200 && xhr.status < 300) {
-          btnText.textContent = "Finalizando…"; setStatus("Finalizando…"); setProgress(100);
+          setStatus("Finalizando…"); setProgress(100);
           const blob = xhr.response;
-          const outName = picked.name.replace(/\.pdf$/i,'') + (format.value === 'excel' ? '.xlsx' : '.docx');
+          const outName = picked.name.replace(/\.pdf$/i,'') + (format === 'excel' ? '.xlsx' : '.docx');
           const link = URL.createObjectURL(blob); const a = document.createElement('a');
           a.href = link; a.download = outName; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(link);
-          setStatus("Pronto!", "ok"); btnText.textContent = "Converter agora";
+          setStatus("Pronto!", "ok");
         } else {
-          setStatus("Erro ao converter", "err"); btnText.textContent = "Converter agora";
+          setStatus("Erro ao converter", "err");
           const reader = new FileReader(); reader.onload = () => alert("Falha na conversão: " + reader.result);
           reader.readAsText(xhr.response || new Blob(["Erro " + xhr.status]));
         }
-        btn.classList.remove('loading'); btn.disabled = false;
+        btn.classList.remove('loading'); btn.disabled = false; other.disabled = false;
       };
 
       xhr.onerror = () => {
         stopFakeProcessing(); setStatus("Erro de conexão", "err");
-        btn.classList.remove('loading'); btn.disabled = false; btnText.textContent = "Converter agora";
+        btn.classList.remove('loading'); btn.disabled = false; other.disabled = false;
         alert("Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.");
       };
 
@@ -448,10 +362,12 @@
         setStatus("Processando…");
         const cur = parseInt(pbar.style.width || "0", 10) || 0;
         if (cur < 80) setProgress(80);
-        btn.classList.add('loading'); btnText.textContent = "Processando…";
         startFakeProcessing();
       }, 400);
-    });
+    }
+
+    btnExcel.addEventListener('click', ()=> convert('excel'));
+    btnWord .addEventListener('click', ()=> convert('word'));
 
     // ===== Modal de Ajuda =====
     (function(){
@@ -500,7 +416,7 @@
         }
       }
       openBtn?.addEventListener('click', openModal);
-      closeBtn?.addEventListener('click', closeModal);
+      document.getElementById('helpClose')?.addEventListener('click', closeModal);
       backdrop?.addEventListener('click', (e)=>{ if (e.target === backdrop) closeModal(); });
       document.addEventListener('keydown', (e)=>{
         if ((e.key === '?' || (e.shiftKey && e.key === '/')) && backdrop.hidden) {
@@ -508,6 +424,7 @@
         }
       });
     })();
+
   </script>
 </body>
 </html>

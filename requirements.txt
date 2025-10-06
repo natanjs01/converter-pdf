@@ -8,4 +8,3 @@ tabula-py
 pdf2image
 pytesseract
 opencv-python-headless
-
